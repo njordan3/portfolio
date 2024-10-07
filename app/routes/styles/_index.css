@@ -1,0 +1,18 @@
+@media only screen and (min-width: 70em) {
+    .components-grid {
+        grid-template-columns: 3fr 9fr;
+    }
+}
+
+.components-grid {
+    display: grid;
+    grid-column-gap: 1.4em;
+    grid-template-rows: auto;
+}
+
+@media only screen and (min-width: 70em) {
+    .components-grid aside {
+        position: sticky;
+        top: calc(var(--global-space)* 2);
+    }
+}
