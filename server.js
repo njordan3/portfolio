@@ -19,7 +19,7 @@ try {
   app.use(
     viteDevServer
       ? viteDevServer.middlewares
-      : express.static("build/client")
+      : express.static("static")
   );
 
   console.log('here2');
