@@ -2,6 +2,7 @@ version: 1
 applications:
   - appRoot: build
     frontend:
+      buildPath: / # Run install and build from the monorepo project root
       phases:
         preBuild:
           commands:
