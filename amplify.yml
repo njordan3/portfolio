@@ -1,6 +1,6 @@
 version: 1
 baseDirectory: .amplify-hosting
-frontend:
+backend:
   phases:
     preBuild:
       commands:
