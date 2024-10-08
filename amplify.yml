@@ -9,7 +9,7 @@ frontend:
         - npm run build
         - ls
         - mv build .amplify-hosting
-        - mv .amplify-hosting/client .amplify-hosting/static
+        - mv .amplify-hosting/client/assets .amplify-hosting/static
         - mkdir -p .amplify-hosting/compute
         - mv .amplify-hosting/server .amplify-hosting/compute/default
         - npm ci --omit dev
