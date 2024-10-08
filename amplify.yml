@@ -7,8 +7,8 @@ frontend:
         - npm ci
     build:
       commands:
-        - echo "NODE_ENV=$NODE_ENV" >> .env
         - npm run build
+        - echo "NODE_ENV=$NODE_ENV" >> .env
     postBuild:
       commands:
         - mv build .amplify-hosting
