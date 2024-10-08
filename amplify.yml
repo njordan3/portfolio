@@ -15,7 +15,7 @@ frontend:
         - npm ci --omit dev
         - cp package.json .amplify-hosting/compute/default
         - cp -r node_modules .amplify-hosting/compute/default
-        - cp server.js .amplify-hosting/compute/default
+        # - cp server.js .amplify-hosting/compute/default
         - cp deploy-manifest.json .amplify-hosting/deploy-manifest.json
   artifacts:
     files:
