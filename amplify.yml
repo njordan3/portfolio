@@ -8,9 +8,7 @@ frontend:
     build:
       commands:
         - npm run build
-        - echo "NODE_ENV=production" >> .env
-    postBuild:
-      commands:
+        - ls
         - mv build .amplify-hosting
         - mv .amplify-hosting/client .amplify-hosting/static
         - mkdir -p .amplify-hosting/compute
