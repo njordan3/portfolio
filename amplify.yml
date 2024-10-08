@@ -1,5 +1,4 @@
 version: 1
-baseDirectory: .amplify-hosting
 frontend:
   phases:
     preBuild:
@@ -19,6 +18,7 @@ frontend:
         - cp server.js .amplify-hosting/compute/default
         - cp deploy-manifest.json .amplify-hosting/deploy-manifest.json
         - ls
+        - ls .amplify-hosting
   artifacts:
     files:
       - "**/*"
