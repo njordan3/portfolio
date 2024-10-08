@@ -1,6 +1,6 @@
 version: 1
 baseDirectory: .amplify-hosting
-backend:
+frontend:
   phases:
     preBuild:
       commands:
@@ -20,6 +20,7 @@ backend:
         - cp -r node_modules .amplify-hosting/compute/default
         - cp server.js .amplify-hosting/compute/default
         - cp deploy-manifest.json .amplify-hosting/deploy-manifest.json
+        - ls
   artifacts:
     files:
       - "**/*"
