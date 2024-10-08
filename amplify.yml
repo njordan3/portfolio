@@ -1,6 +1,6 @@
 version: 1
 applications:
-  - appRoot: build
+  - appRoot: .amplify-hosting
     frontend:
       buildPath: / # Run install and build from the monorepo project root
       phases:
@@ -10,11 +10,16 @@ applications:
         build:
           commands:
             - npm run build
-        postBuild:
-          commands:
-            - npm run serve
+            - mv build .amplify-hosting
+            - mv .amplify-hosting/client .amplify-hosting/static
+            - mkdir -p .amplify-hosting/compute
+            - mv .amplify-hosting/server .amplify-hosting/compute/default
+            - npm ci --omit dev
+            - cp package.json .amplify-hosting/compute/default
+            - cp -r node_modules .amplify-hosting/compute/default
+            - cp server.js .amplify-hosting/compute/default
       artifacts:
-        baseDirectory: build
+        baseDirectory: .amplify-hosting
         files:
           - "**/*"
       cache:
