@@ -1,4 +1,5 @@
 version: 1
+baseDirectory: .amplify-hosting
 frontend:
   phases:
     preBuild:
@@ -7,9 +8,8 @@ frontend:
     build:
       commands:
         - npm run build
-        - ls
         - mv build .amplify-hosting
-        - mv .amplify-hosting/client/assets .amplify-hosting/static
+        - mv .amplify-hosting/client .amplify-hosting/static
         - mkdir -p .amplify-hosting/compute
         - mv .amplify-hosting/server .amplify-hosting/compute/default
         - npm ci --omit dev
@@ -17,10 +17,6 @@ frontend:
         - cp -r node_modules .amplify-hosting/compute/default
         - cp server.js .amplify-hosting/compute/default
         - cp deploy-manifest.json .amplify-hosting/deploy-manifest.json
-        - ls
-        - ls .amplify-hosting/static
-        - ls .amplify-hosting/compute
-        - ls .amplify-hosting/compute/default
   artifacts:
     files:
       - "**/*"
