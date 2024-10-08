@@ -18,7 +18,9 @@ frontend:
         - cp server.js .amplify-hosting/compute/default
         - cp deploy-manifest.json .amplify-hosting/deploy-manifest.json
         - ls
-        - ls .amplify-hosting
+        - ls .amplify-hosting/static
+        - ls .amplify-hosting/compute
+        - ls .amplify-hosting/compute/default
   artifacts:
     files:
       - "**/*"
