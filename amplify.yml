@@ -1,6 +1,6 @@
 version: 1
 applications:
-  - appRoot: .amplify-hosting
+  - appRoot: /
     frontend:
       buildPath: / # Run install and build from the monorepo project root
       phases:
