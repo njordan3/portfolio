@@ -8,16 +8,16 @@ if (process.env.NODE_ENV === 'production') {
   // const build = await import('index.js');
   
 } else {
-  const viteDevServer = await import('vite').then((vite) =>
-    vite.createServer({
-      server: { middlewareMode: true },
-    })
-  );
+  // const viteDevServer = await import('vite').then((vite) =>
+  //   vite.createServer({
+  //     server: { middlewareMode: true },
+  //   })
+  // );
 
-  app.use(viteDevServer.middlewares);
+  // app.use(viteDevServer.middlewares);
 
-  const build = () => viteDevServer.ssrLoadModule('virtual:remix/server-build');
-  app.all('*', createRequestHandler({ build }));
+  // const build = () => viteDevServer.ssrLoadModule('virtual:remix/server-build');
+  // app.all('*', createRequestHandler({ build }));
 }
 
 app.all('*', createRequestHandler({ build }));
