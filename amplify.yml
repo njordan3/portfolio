@@ -17,7 +17,7 @@ frontend:
         - cp -r node_modules .amplify-hosting/compute/default
         - cp server.js .amplify-hosting/compute/default
         - cp deploy-manifest.json .amplify-hosting/deploy-manifest.json
-        - echo "NODE_ENV=production" >> .env
+        - echo "NODE_ENV=production" >> .amplify-hosting/.env
   artifacts:
     files:
       - "**/*"
