@@ -10,7 +10,7 @@ import {
   export const links = () => [
     {
       rel: 'icon',
-      href: '/favicon.ico',
+      href: '/assets/favicon.ico',
       type: 'image/ico',
     }
   ];
