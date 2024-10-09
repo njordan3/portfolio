@@ -7,8 +7,6 @@ frontend:
         - npm ci
     build:
       commands:
-        - env | grep -e ENVIRONMENT >> .env
-        - cat .env
         - npm run build
         - mv build .amplify-hosting
         - mv .amplify-hosting/client .amplify-hosting/static
@@ -19,6 +17,7 @@ frontend:
         - cp -r node_modules .amplify-hosting/compute/default
         - cp server.js .amplify-hosting/compute/default
         - cp deploy-manifest.json .amplify-hosting/deploy-manifest.json
+        - env | grep -e ENVIRONMENT >> .amplify-hosting/compute/default.env
   artifacts:
     files:
       - "**/*"
