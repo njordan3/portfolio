@@ -6,6 +6,14 @@ import {
   } from "@remix-run/react";
   
   import './shared.css';
+
+  export const links = () => [
+    {
+      rel: 'icon',
+      href: '/favicon.ico',
+      type: 'image/ico',
+    }
+  ];
   
   export default function App() {
     return (
