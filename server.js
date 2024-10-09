@@ -1,17 +1,26 @@
-import remix from "@remix-run/express";
-import express from "express";
-import * as build from "./index.js";
+import { createRequestHandler } from '@remix-run/express';
+import express from 'express';
 
 const app = express();
-const port = 3000;
 
-app.all(
-  "*",
-  remix.createRequestHandler({
-    build,
-  })
-);
+let build = null;
+if (process.env.NODE_ENV === 'production') {
+  build = await import('./index.js');
+  
+} else {
+  const viteDevServer = await import('vite').then((vite) =>
+    vite.createServer({
+      server: { middlewareMode: true },
+    })
+  );
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+  app.use(viteDevServer.middlewares);
+
+  build = () => viteDevServer.ssrLoadModule('virtual:remix/server-build');
+}
+
+app.all('*', createRequestHandler({ build }));
+
+app.listen(3000, () => {
+  console.log('App listening on http://localhost:3000');
+});
