@@ -7,7 +7,7 @@ frontend:
         - npm ci
     build:
       commands:
-        - ENVIRONMENT=$ENVIRONMENT
+        - env | grep -e ENVIRONMENT >> .env
         - npm run build
         - mv build .amplify-hosting
         - mv .amplify-hosting/client .amplify-hosting/static
