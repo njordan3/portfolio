@@ -3,7 +3,7 @@ import express from 'express';
 
 const app = express();
 
-if (process.env.NODE_ENV === 'production') {
+if (process.env.ENVIRONMENT === 'production') {
   // const build = await import('./index.js');
   // app.all('*', createRequestHandler({ build }));
 } else {
