@@ -8,7 +8,6 @@ frontend:
     build:
       commands:
         - env | grep -e ENVIRONMENT >> .env
-        - echo "TEST=test" >> .env
         - cat .env
         - npm run build
         - mv build .amplify-hosting
