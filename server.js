@@ -1,25 +1,29 @@
 import { createRequestHandler } from '@remix-run/express';
 import express from 'express';
-import 'dotenv/config';
+import 'dotenv/config'; // Import .env file contents to process.env
+
+const viteDevServer =
+  process.env.ENVIRONMENT === 'production'
+    ? null
+    : await import('vite').then((vite) =>
+        vite.createServer({
+          server: { middlewareMode: true },
+        })
+      );
 
 const app = express();
-let build = null;
+app.use(
+  viteDevServer
+    ? viteDevServer.middlewares
+    : express.static('../../static')
+);
 
-if (process.env.ENVIRONMENT === 'production') {
-  build = await import('./index.js');
-  app.all('*', createRequestHandler({ build }));
-  app.use(express.static('../../static'));
-} else {
-  const viteDevServer = await import('vite').then((vite) =>
-    vite.createServer({
-      server: { middlewareMode: true },
-    })
-  );
-
-  app.use(viteDevServer.middlewares);
-
-  build = () => viteDevServer.ssrLoadModule('virtual:remix/server-build');
-}
+const build = viteDevServer
+  ? () =>
+      viteDevServer.ssrLoadModule(
+        'virtual:remix/server-build'
+      )
+  : await import('./index.js');
 
 app.all('*', createRequestHandler({ build }));
 
