@@ -5,11 +5,11 @@ import 'dotenv/config';
 const app = express();
 
 if (process.env.ENVIRONMENT === 'production') {
-  // const build = await import('./index.js');
-  // app.all('*', createRequestHandler({ build }));
-} else {
   const build = await import('./index.js');
   app.all('*', createRequestHandler({ build }));
+} else {
+  // const build = await import('./index.js');
+  // app.all('*', createRequestHandler({ build }));
   // const viteDevServer = await import('vite').then((vite) =>
   //   vite.createServer({
   //     server: { middlewareMode: true },
