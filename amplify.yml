@@ -17,7 +17,7 @@ frontend:
         - cp -r node_modules .amplify-hosting/compute/default
         - cp server.js .amplify-hosting/compute/default
         - cp deploy-manifest.json .amplify-hosting/deploy-manifest.json
-        - env | grep -e ENVIRONMENT >> .amplify-hosting/compute/default.env
+        - env | grep -e ENVIRONMENT >> .amplify-hosting/compute/default/.env
   artifacts:
     files:
       - "**/*"
