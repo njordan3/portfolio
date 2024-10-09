@@ -3,24 +3,25 @@ import express from 'express';
 import 'dotenv/config';
 
 const app = express();
+let build = null;
 
 if (process.env.ENVIRONMENT === 'production') {
-  const build = await import('./index.js');
+  build = await import('./index.js');
   app.all('*', createRequestHandler({ build }));
+  app.use(express.static('../../static'));
 } else {
-  // const build = await import('./index.js');
-  // app.all('*', createRequestHandler({ build }));
-  // const viteDevServer = await import('vite').then((vite) =>
-  //   vite.createServer({
-  //     server: { middlewareMode: true },
-  //   })
-  // );
+  const viteDevServer = await import('vite').then((vite) =>
+    vite.createServer({
+      server: { middlewareMode: true },
+    })
+  );
 
-  // app.use(viteDevServer.middlewares);
+  app.use(viteDevServer.middlewares);
 
-  // const build = () => viteDevServer.ssrLoadModule('virtual:remix/server-build');
-  // app.all('*', createRequestHandler({ build }));
+  build = () => viteDevServer.ssrLoadModule('virtual:remix/server-build');
 }
+
+app.all('*', createRequestHandler({ build }));
 
 app.listen(3000, () => {
   console.log('App listening on http://localhost:3000');
