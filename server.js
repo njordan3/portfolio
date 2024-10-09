@@ -1,10 +1,11 @@
 import { createRequestHandler } from '@remix-run/express';
 import express from 'express';
+import * as build from "./index.js";
 
 const app = express();
 
 if (process.env.NODE_ENV === 'production') {
-  const build = await import('index.js');
+  // const build = await import('index.js');
   app.all('*', createRequestHandler({ build }));
 } else {
   const viteDevServer = await import('vite').then((vite) =>
