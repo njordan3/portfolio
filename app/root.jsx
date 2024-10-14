@@ -5,7 +5,7 @@ import {
   Scripts,
 } from "@remix-run/react";
 
-import favicon from '../assets/favicon.ico';
+import favicon from '@images/favicon.ico';
   
 import './shared.css';
 

@@ -1,19 +1,17 @@
 import { useSearchParams } from '@remix-run/react';
 
-import './styles/terminal-dark.css';
+import '@styles/terminal-dark.css';
 import './styles/_index.css';
 
-import me from '../../assets/me.jpg';
-import yosemiteDrink from '../../assets/yosemite-drink.jpg';
-import craterLake from '../../assets/crater-lake.jpg';
-import halfDomeClimbingDown from '../../assets/half-dome-climbing-down.jpeg';
-import kernRiverHike from '../../assets/kern-river-hike.jpg';
-import yosemiteValley from '../../assets/yosemite-valley.jpg';
-import resume from '../../assets/resume.pdf';
-
+import me from '@images/me.jpg';
+import yosemiteDrink from '@images/yosemite-drink.jpg';
+import craterLake from '@images/crater-lake.jpg';
+import halfDomeClimbingDown from '@images/half-dome-climbing-down.jpeg';
+import kernRiverHike from '@images/kern-river-hike.jpg';
+import yosemiteValley from '@images/yosemite-valley.jpg';
 
 import { Form } from 'react-router-dom';
-import ImageCarousel from '../components/image-carousel';
+import ImageCarousel from '@components/image-carousel';
 
 export default function Index() {
     const linkedIn = 'https://www.linkedin.com/in/nicholas-jordan-80657920b/';
@@ -47,7 +45,7 @@ export default function Index() {
                             <h2>Resources</h2>
                             <nav>
                                 <ul>
-                                    <li className="mb-2"><a href={resume} target="_blank">View Resume</a></li>
+                                    <li className="mb-2"><a href="https://drive.google.com/file/d/1P2z2v_VaIpffbaWqVM0gS5pNkZgKvx83/view?usp=sharing" target="_blank">View Resume</a></li>
                                     <li className="mb-2"><a href="mailto:nijordan99@gmail.com" target="_blank">Email Me</a></li>
                                     <li className="mb-2"><a href={linkedIn} target="_blank">My LinkedIn</a></li>
                                     <li className="mb-2"><a href={github} target="_blank">My Github</a></li>
@@ -210,7 +208,7 @@ export default function Index() {
                                         </p>
                                         <p>
                                             Over these 3+ years I've proven myself to be a reliable problem solver and strong communicator;
-                                            becoming a go-to-guy within the company for backend systems inquiries.
+                                            becoming a go-to guy within the company for backend systems inquiries.
                                         </p>
                                     </div>
                                 </div>
