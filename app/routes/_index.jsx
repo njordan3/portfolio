@@ -1,8 +1,5 @@
 import { useSearchParams } from '@remix-run/react';
 
-import '@styles/terminal-dark.css';
-import './styles/_index.css';
-
 import me from '@images/me.jpg';
 import yosemiteDrink from '@images/yosemite-drink.jpg';
 import craterLake from '@images/crater-lake.jpg';

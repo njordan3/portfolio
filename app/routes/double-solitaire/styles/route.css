@@ -3,6 +3,9 @@
 }
 #left-sidebar {
     grid-area: left-sidebar;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
 }
 #right-sidebar {
     grid-area: right-sidebar;
@@ -14,10 +17,10 @@
     grid-area: board;
 }
   
-#container {
+#board-container {
     display: grid;
     height: 100vh;
-    grid-template-columns: 50px 1fr 50px;
+    grid-template-columns: auto 1fr auto;
     grid-template-rows: auto 1fr auto;
     grid-template-areas: 
         "header header header"
