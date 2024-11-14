@@ -3,9 +3,18 @@ import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { getImage, loadImage } from '@components/suspense-image'
 import felt from '@images/tabletopfelt.jpg';
 import cardSpriteSheet from '@images/decksprite.png';
+import BoardCamera from './board-camera';
 
 const suits = [{suit: 'hearts', color: 'red'}, {suit: 'diamonds', color: 'red'}, {suit: 'clubs', color: 'black'}, {suit: 'spades', color: 'black'}];
 const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king', 'ace'];
+
+const camera = new BoardCamera();
+const boardCoordinates = {
+    x: 0,
+    y: 0,
+    width: 2000,
+    height: 1000
+};
 
 /**
  * For position considerations we are considering the middle to be at 0,0
@@ -14,6 +23,14 @@ export default function Board() {
     const background = useRef(null);
     const foreground = useRef(null);
     const container = useRef(null);
+    
+    const mouse = useRef({
+        x: 0,
+        y: 0,
+        oldX: 0,
+        oldY: 0,
+        button: false,
+    });
 
     loadImage(cardSpriteSheet, (image) => {
         // Cache card data on load
@@ -50,83 +67,62 @@ export default function Board() {
 
     loadImage(felt).read();
     
-    // useRefs so we don't re-render the component
-    const camera = useRef(null);
-    const moveStart = useRef(null);
-    const isDragging = useRef(false);
-    const backgroundCoords = useRef(null);
+    const animationFrameId = useRef(null);
 
     const renderBackground = useCallback(() => {
-        const canvas = background.current;
-        const context = canvas.getContext('2d', { alpha: false });
+        const { background } = camera.contexts;
 
-        // canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        background.fillStyle = background.createPattern(getImage(felt).read().image, 'repeat');
+        background.fillRect(boardCoordinates.x, boardCoordinates.y, boardCoordinates.width, boardCoordinates.height);
 
-        context.setTransform(1, 0, 0, 1, 0, 0);
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        
-        context.save();
-        const { x, y, zoom } = camera.current;
-        context.translate(-x * zoom, -y * zoom);
-        context.scale(zoom, zoom);
-        context.rect(backgroundCoords.current.x, backgroundCoords.current.y, backgroundCoords.current.width, backgroundCoords.current.height);
-        context.fillStyle = context.createPattern(getImage(felt).read().image, 'repeat');
-        context.fill();
-        context.restore();
-    }, [background, backgroundCoords, container, camera]);
+    }, []);
 
     const renderForeground = useCallback(() => {
-        const canvas = foreground.current;
-        const context = canvas.getContext('2d');
-
-        // canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-        context.setTransform(1, 0, 0, 1, 0, 0);
-        context.clearRect(0, 0, canvas.width, canvas.height);
-
-        context.save();
-        const { x, y, zoom } = camera.current;
-        context.translate(-x * zoom, -y * zoom);
-        context.scale(zoom, zoom);
-        // context.translate(camera.current.x, camera.current.y);
+        const { foreground } = camera.contexts;
         const { cards } = getImage(cardSpriteSheet).read();
         cards.forEach((card) => {
-            context.drawImage(card, 0, 0);
+            foreground.drawImage(card, boardCoordinates.width/2, boardCoordinates.height/2); // Temp draw in the middle of board
         });
-        context.restore();
-    }, [foreground]);
+    }, []);
 
     const resizeCanvas = useCallback(() => {
-        const fContext = foreground.current.getContext('2d');
-        const fCanvas = fContext.canvas;
-        const bContext = background.current.getContext('2d', { alpha: false });
-        const bCanvas = bContext.canvas;
+        foreground.current.width = background.current.width = container.current.clientWidth;
+        foreground.current.height = background.current.height = container.current.clientHeight;
 
-        // const { width, height } = canvas.getBoundingClientRect();
-    
-        // if (canvas.width !== width || canvas.height !== height) {
-        //     const { devicePixelRatio: ratio = 1 } = window;
-        //     const context = canvas.getContext('2d');
-        //     canvas.width = width * ratio;
-        //     canvas.height = height * ratio;
-        //     context.scale(ratio, ratio);
-        // }
-        fCanvas.width = bCanvas.width = container.current.clientWidth;
-        fCanvas.height = bCanvas.height = container.current.clientHeight;
-        // camera.current.x = camera.current.x || bCanvas.width/2 - MIDDLE.x;
-        // camera.current.y = camera.current.y || bCanvas.height/2 - MIDDLE.y;
+        camera.forceUpdate();
+    }, [container]);
+
+    const render = useCallback(() => {
+        if (camera.needsUpdate) {
+            camera.reset(); // Clear canvases
+
+            camera.apply(); // Set the 2D context transform to the view
+            renderForeground();
+            renderBackground();
+        }
         
-        renderBackground();
-        // renderBoxes();
-    }, [background, foreground]);
+        animationFrameId.current = window.requestAnimationFrame(render);
+    }, [renderForeground, renderBackground, container, foreground, background]);
 
-    const handleMouseMove = useCallback((e) => {
-        const x = container.current.clientWidth/2 - camera.current.x + e.clientX;
-        const y = container.current.clientHeight/2 - camera.current.y + e.clientY;
-        if (isDragging.current) {
-            // sendInput('mousemove', x, y);
-        } else if (moveStart.current) {
-            camera.current.x -= moveStart.current.x - x;
-            camera.current.y -= moveStart.current.y - y;
+    const handleScroll = useCallback((e) => {
+        camera.scaleAt({ x: e.clientX, y: e.clientY }, e.deltaY);
+    }, []);
+
+    const handleMouse = useCallback((e) => {
+        if (e.type === 'mousedown') {
+            mouse.current.button = true;
+        }
+        if (e.type === 'mouseup' || e.type === 'mouseout') {
+            mouse.current.button = false;
+        }
+    
+        mouse.current.oldX = mouse.current.x;
+        mouse.current.oldY = mouse.current.y;
+        mouse.current.x = e.clientX - e.target.offsetLeft;
+        mouse.current.y = e.clientY - e.target.offsetTop;
+        if (mouse.current.button && e.type === 'mousemove') {
+            camera.pan({ x: mouse.current.x - mouse.current.oldX, y: mouse.current.y - mouse.current.oldY });
+
             // check x and y seperately so the window doesnt get stuck
             // if (checkWindowXCollision(bg_coords, translation)) {
             //     camera.current.x += moveStart.current.x - x;
@@ -134,37 +130,9 @@ export default function Board() {
             // if (checkWindowYCollision(bg_coords, translation)) {
             //     camera.current.y += moveStart.current.y - y;
             // }
-            resizeCanvas();
         }
-    }, [isDragging, camera, resizeCanvas]);
-
-    const handleMouseDown = useCallback((e) => {
-        const x = container.current.clientWidth/2 - camera.current.x + e.clientX;
-        const y = container.current.clientHeight/2 - camera.current.y + e.clientY;
-        // if (checkCollision(x, y)) {
-        //     isDragging.current = true;
-        //     sendInput('mousedown', x, y);
-        // } else {
-        moveStart.current = {x, y};
-        // }
-    }, [camera, container]);
-
-    const handleMouseUp = useCallback((e) => {
-        if (isDragging.current) {
-            // sendInput('mouseup', -translation.x + e.clientX, -translation.y + e.clientY)
-        } else if (moveStart.current) {
-            moveStart.current = null
-        }
-    }, [isDragging, moveStart]);
-
-    const handleScroll = useCallback((e) => {
-        const step = 0.5, min = 0.5, max = 3;
-        const newZoom = camera.current.zoom + (e.nativeEvent.wheelDelta > 0 ? step : -step);
-        if (newZoom <= max && newZoom >= min) {
-            camera.current.zoom = newZoom;
-            resizeCanvas();
-        }
-    }, [camera]);
+        // console.log(camera.getBoardPosition(mouse.current.x, mouse.current.y));
+    }, []);
 
     useEffect(() => {
         const fCanvas = foreground.current;
@@ -173,38 +141,15 @@ export default function Board() {
             return;
         }
 
-        const backgroundImage = getImage(felt).read().image;
-
-        // How many background images fit in the canvas in the x and y directions
-        const bgFitX = Math.ceil(container.current.clientWidth / backgroundImage.width);
-        const bgFitY = Math.ceil(container.current.clientHeight / backgroundImage.height);
-
-        backgroundCoords.current = {
-            x: -backgroundImage.width * (bgFitX / 2),
-            y: -backgroundImage.height * (bgFitY / 2),
-            width: bgFitX * backgroundImage.width,
-            height: bgFitY * backgroundImage.height
-        };
-
-        camera.current = {
-            x: -container.current.clientWidth/2,
-            y: -container.current.clientHeight/2,
-            zoom: 1,
-        };
-
-        let animationFrameId;
-
-        const render = () => {
-            renderForeground();
-            animationFrameId = window.requestAnimationFrame(render);
-        }
-        render();
-        resizeCanvas();
+        camera.setContexts(fCanvas.getContext('2d'), bCanvas.getContext('2d'));     
 
         window.addEventListener('resize', resizeCanvas);
+    
+        animationFrameId.current = window.requestAnimationFrame(render);
+        resizeCanvas();
 
         return () => {
-            window.cancelAnimationFrame(animationFrameId);
+            window.cancelAnimationFrame(animationFrameId.current);
             window.removeEventListener('resize', resizeCanvas);
         }
     }, []);
@@ -212,13 +157,14 @@ export default function Board() {
     console.log('render');
     return (
         <div id='board' className='flex' ref={container}>
-            <canvas className='absolute z-[1]' ref={background} />
+            <canvas className='absolute z-[1] bg-black' ref={background} />
             <canvas
                 className='absolute z-[2] bg-transparent'
                 ref={foreground}
-                onMouseMove={handleMouseMove}
-                onMouseDown={handleMouseDown}
-                onMouseUp={handleMouseUp}
+                onMouseMove={handleMouse}
+                onMouseDown={handleMouse}
+                onMouseUp={handleMouse}
+                onMouseOut={handleMouse}
                 onWheel={handleScroll}
             />
         </div>
