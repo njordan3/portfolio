@@ -1,7 +1,10 @@
-import { Suspense } from 'react';
+import { Suspense, lazy } from 'react';
 import Board from './board';
-
+import cardSpriteSheet from '@images/decksprite.png';
+import feltTexture from '@images/tabletopfelt.jpg';
 import routeCSS from './styles/route.css?url';
+import { Await, useLoaderData } from '@remix-run/react';
+import { getImage } from '@/utils/images';
 
 export const links = () => [
     {
@@ -10,7 +13,13 @@ export const links = () => [
     },
 ];
 
+export const clientLoader = async () => {
+    return Promise.all([ getImage(cardSpriteSheet), getImage(feltTexture) ]);
+};
+
 export default function DoubleSolitaire() {
+    const imagesPromise = useLoaderData();
+
     return (
         <div id="board-container">
             <div id="header"></div>
@@ -25,7 +34,9 @@ export default function DoubleSolitaire() {
                 <button className="btn btn-default btn-ghost">Multiplayer</button>
             </div>
             <Suspense fallback={'Loading...'}>
-                <Board/>
+                <Await resolve={imagesPromise}>
+                    <Board/>
+                </Await>
             </Suspense>
             <div id="right-sidebar"></div>
             <div id="footer"></div>
