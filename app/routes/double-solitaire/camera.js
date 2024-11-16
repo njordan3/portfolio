@@ -1,4 +1,4 @@
-export default class BoardCamera {
+export default class Camera {
     #scale = 1;
     #zoomInStep = 1.1;
     #zoomOutStep;
