@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import Board from './board.client';
+import Board from './game.client/board';
 import cardSpriteSheet from '@images/decksprite.png';
 import feltTexture from '@images/tabletopfelt.jpg';
 import routeCSS from './styles/route.css?url';

@@ -4,10 +4,8 @@ import felt from '@images/tabletopfelt.jpg';
 import cardSpriteSheet from '@images/decksprite.png';
 import { getImage, use } from '@/utils/images';
 import { useGame } from './game';
+import Hand from './hand';
 
-/**
- * For position considerations we are considering the middle to be at 0,0
- */
 export default function Board() {
     const background = useRef(null);
     const foreground = useRef(null);
@@ -26,21 +24,15 @@ export default function Board() {
         background.fillStyle = background.createPattern(boardTexture, 'repeat');
         background.fillRect(0, 0, game.dimensions.boardWidth, game.dimensions.boardHeight);
 
-        const { cardWidth, cardHeight, cardMargin } = game.dimensions;
-        const { tableau, foundations, hand } = game;
-
-        background.strokeStyle = 'gold';
-        for (let i = 0; i < tableau.length; i++) {
-            background.strokeRect(tableau[i].position.x - cardMargin, tableau[i].position.y - cardMargin, cardWidth + (2*cardMargin), cardHeight + (2*cardMargin));
+        for (let i = 0; i < game.tableau.length; i++) {
+            game.tableau[i].renderBackground(background);
         }
 
-        for (let i = 0; i < foundations.length; i++) {
-            background.strokeRect(foundations[i].position.x - cardMargin, foundations[i].position.y - cardMargin, cardWidth + (2*cardMargin), cardHeight + (2*cardMargin));
+        for (let i = 0; i < game.foundations.length; i++) {
+            game.foundations[i].renderBackground(background);
         }
 
-        background.strokeStyle = 'gold';
-        background.strokeRect(hand.position.x - cardMargin, hand.position.y - cardMargin, cardWidth + (2*cardMargin), cardHeight + (2*cardMargin));
-
+        game.hand.renderBackground(background);
     }, []);
 
     const renderForeground = useCallback(() => {
@@ -50,8 +42,21 @@ export default function Board() {
         if (hand.top('down')) {
             foreground.drawImage(game.cardBackImage, hand.position.x, hand.position.y);
         }
+
+        const draggingCards = [];
+
+        // Render only last 3 of hand up
+        const indexClamp = (hand.up.length > Hand.dealAmount ? hand.up.length - Hand.dealAmount : 0);
+        for (let i = indexClamp; i < hand.up.length; i++) {
+            const { position, context, isDragging } = hand.up[i];
+            if (isDragging) {
+                draggingCards.push(hand.up[i]);
+                continue;
+            }
+
+            foreground.drawImage(context.canvas, position.x, position.y);
+        }
         
-        let draggingCard = null;
         for (let i = 0; i < tableau.length; i++) {
             if (tableau[i].down.length > 0) {
                 foreground.drawImage(game.cardBackImage, tableau[i].position.x, tableau[i].position.y);
@@ -60,7 +65,7 @@ export default function Board() {
             for (let j = 0; j < tableau[i].up.length; j++) {
                 const { position, context, isDragging } = tableau[i].up[j];
                 if (isDragging) {
-                    draggingCard = tableau[i].up[j];
+                    draggingCards.push(tableau[i].up[j]);
                     continue;
                 }
 
@@ -68,6 +73,7 @@ export default function Board() {
             }
         }
 
+        // Render only top cards
         for (let i = 0; i < foundations.length; i++) {
             const topCard = foundations[i].top('up');
 
@@ -77,8 +83,9 @@ export default function Board() {
             }
         }
 
-        if (draggingCard !== null) {
-            const { position, context, isDragging } = draggingCard;
+        // Render dragging cards last so they appear on top
+        for (let i = 0; i < draggingCards.length; i++) {
+            const { position, context } = draggingCards[i];
             foreground.drawImage(context.canvas, position.x, position.y);
         }
     }, []);
