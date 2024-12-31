@@ -1,5 +1,5 @@
 import { Ranks, Suits } from './constants';
-import { getGame } from './game';
+import { getGame } from './game-controller';
 import Stack from './stack';
 
 export default class Tableau extends Stack {

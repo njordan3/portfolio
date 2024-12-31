@@ -1,4 +1,4 @@
-import { getGame } from './game';
+import { getGame } from "./game-controller";
 
 export default class Stack {
     up = [];

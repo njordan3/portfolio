@@ -10,6 +10,16 @@ import yosemiteValley from '@images/yosemite-valley.jpg';
 import { Form } from 'react-router-dom';
 import ImageCarousel from '@components/image-carousel';
 
+import indexCSS from './styles/_index.css?url';
+
+export const links = () => [
+    {
+        rel: 'stylesheet',
+        href: indexCSS
+    },
+];
+
+
 export default function Index() {
     const linkedIn = 'https://www.linkedin.com/in/nicholas-jordan-80657920b/';
     const github = 'https://github.com/njordan3';

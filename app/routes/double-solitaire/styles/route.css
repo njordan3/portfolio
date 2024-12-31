@@ -6,6 +6,7 @@
     display: flex;
     flex-direction: column;
     padding: 10px;
+    width: 220px;
 }
 #right-sidebar {
     grid-area: right-sidebar;
@@ -20,10 +21,16 @@
 #board-container {
     display: grid;
     height: 100vh;
+    max-height: 100vh;
     grid-template-columns: auto 1fr auto;
     grid-template-rows: auto 1fr auto;
     grid-template-areas: 
         "header header header"
         "left-sidebar board right-sidebar"
         "footer footer footer";
+}
+
+.game-browser {
+    scrollbar-width: thin;
+    scrollbar-color: var(--secondary-color) var(--background-color);
 }

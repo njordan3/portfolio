@@ -1,5 +1,7 @@
 import { createRequestHandler } from '@remix-run/express';
 import express from 'express';
+import { createServer } from 'http';
+import initWebSocketServer from './websocket/server.js';
 
 const viteDevServer =
   process.env.NODE_ENV === 'production'
@@ -26,6 +28,9 @@ const build = viteDevServer
 
 app.all('*', createRequestHandler({ build }));
 
-app.listen(process.env.PORT, async() => {
+const httpServer = createServer(app);
+initWebSocketServer(httpServer);
+
+httpServer.listen(process.env.PORT, async() => {
   console.log(`App (${process.env.NODE_ENV}) listening on http://localhost:${process.env.PORT}`);
 });

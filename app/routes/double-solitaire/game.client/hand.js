@@ -1,4 +1,4 @@
-import { getGame } from './game';
+import { getGame } from './game-controller';
 import Stack from './stack';
 
 export default class Hand extends Stack {

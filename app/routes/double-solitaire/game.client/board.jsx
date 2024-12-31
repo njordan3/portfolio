@@ -1,24 +1,33 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, memo } from 'react';
 
 import felt from '@images/tabletopfelt.jpg';
 import cardSpriteSheet from '@images/decksprite.png';
 import { getImage, use } from '@/utils/images';
-import { useGame } from './game';
 import Hand from './hand';
+import { getGame } from './game-controller';
+import { MultiplayerGame } from './multiplayer-game';
+import { Game } from './game';
 
-export default function Board() {
+/**
+ * The board is a series of canvases and handles its own renders,
+ * so we don't need react to re-render if the parent re-renders
+ */
+export default memo(Board);
+
+function Board() {
     const background = useRef(null);
     const foreground = useRef(null);
     const container = useRef(null);
 
+    use(Game.loadAssets())
     use(getImage(cardSpriteSheet));
     const boardTexture = use(getImage(felt));
-
-    const { game } = useGame();
     
     const animationFrameId = useRef(null);
 
     const renderBackground = useCallback(() => {
+        const game = getGame();
+
         const { background } = game.camera.contexts;
 
         background.fillStyle = background.createPattern(boardTexture, 'repeat');
@@ -36,11 +45,13 @@ export default function Board() {
     }, []);
 
     const renderForeground = useCallback(() => {
+        const game = getGame();
+
         const { foreground } = game.camera.contexts;
         const { tableau, foundations, hand } = game;
 
         if (hand.top('down')) {
-            foreground.drawImage(game.cardBackImage, hand.position.x, hand.position.y);
+            foreground.drawImage(game.cardBackImage.canvas, hand.position.x, hand.position.y);
         }
 
         const draggingCards = [];
@@ -59,7 +70,7 @@ export default function Board() {
         
         for (let i = 0; i < tableau.length; i++) {
             if (tableau[i].down.length > 0) {
-                foreground.drawImage(game.cardBackImage, tableau[i].position.x, tableau[i].position.y);
+                foreground.drawImage(game.cardBackImage.canvas, tableau[i].position.x, tableau[i].position.y);
             }
 
             for (let j = 0; j < tableau[i].up.length; j++) {
@@ -91,13 +102,17 @@ export default function Board() {
     }, []);
 
     const resizeCanvas = useCallback(() => {
+        const game = getGame();
+        
         foreground.current.width = background.current.width = container.current.clientWidth;
         foreground.current.height = background.current.height = container.current.clientHeight;
 
         game.camera.forceUpdate();
-    }, [container]);
+    }, []);
 
     const render = useCallback(() => {
+        const game = getGame();
+
         if (game.camera.needsUpdate) {
             game.camera.reset(); // Clear canvases
 
@@ -116,30 +131,34 @@ export default function Board() {
             return;
         }
 
+        const game = getGame();
+
         game.deal();
 
-        game.camera.setContexts(fCanvas.getContext('2d'), bCanvas.getContext('2d'));     
-
-        window.addEventListener('resize', resizeCanvas);
+        game.camera.setContexts(fCanvas.getContext('2d'), bCanvas.getContext('2d'));
+        new ResizeObserver(resizeCanvas).observe(container.current);
     
         animationFrameId.current = window.requestAnimationFrame(render);
         resizeCanvas();
 
         return () => {
             window.cancelAnimationFrame(animationFrameId.current);
-            window.removeEventListener('resize', resizeCanvas);
         }
     }, []);
 
     const handleMouse = useCallback((e) => {
+        const game = getGame();
+
         game.mouseEvent(e)
     }, []);
 
     const handleScroll = useCallback((e) => {
+        const game = getGame();
+
         game.scrollEvent(e)
     }, []);
 
-    console.log('render');
+    console.log('board render');
     return (
         <div id='board' className='flex' ref={container}>
             <canvas className='absolute z-[1] bg-black' ref={background} />
