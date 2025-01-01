@@ -93,6 +93,12 @@ export class MultiplayerGame extends Game {
             MultiplayerGame.#doEvent('player-joined', data);
         });
 
+        MultiplayerGame.#socket.on('player-left', (data) => {
+            console.log('player-left', data);
+            this.#opponent = undefined;
+            MultiplayerGame.#doEvent('player-left');
+        });
+
         MultiplayerGame.#socket.on('player-update', (data) => {
             console.log('player-update', data);
             const { id, ...rest } = data;
@@ -113,6 +119,16 @@ export class MultiplayerGame extends Game {
             }
         });
 
+        MultiplayerGame.#socket.on('game-start', (data) => {
+            console.log('game-start', data);
+            MultiplayerGame.#doEvent('game-start', data);
+        });
+
+        MultiplayerGame.#socket.on('game-start-timer', (data) => {  
+            console.log('game-start-timer', data);
+            MultiplayerGame.#doEvent('game-start-timer', data);
+        });
+
         MultiplayerGame.#socket.on('session', (data) => {
             console.log('session', data);
             const { sessionId, userId, game } = data;
@@ -126,7 +142,7 @@ export class MultiplayerGame extends Game {
                 this.#opponent = game.opponent;
                 this.#spectators = game.spectators;
                 // Pass on whether user (owner or opponent) is ready
-                data.ready = ((game.owner?.id ?? null) === userId && (game.owner?.ready)) || ((game.opponent?.id ?? null) === userId && (game.opponent?.ready));
+                data.userReady = ((game.owner?.id ?? null) === userId && (game.owner?.ready)) || ((game.opponent?.id ?? null) === userId && (game.opponent?.ready));
             }
 
             MultiplayerGame.#doEvent('session', data);
@@ -260,16 +276,42 @@ export class MultiplayerGame extends Game {
             }
 
             if (this.isOwner()) {
-                console.log('owner');
                 this.#owner.ready = ready;
                 MultiplayerGame.#doEvent('owner-update', { ready });
             } else if (this.isOpponent()) {
-                console.log('opponent');
                 this.#opponent.ready = ready;
                 MultiplayerGame.#doEvent('opponent-update', { ready });
             }
             
             MultiplayerGame.#doEvent('ready-up', ready);
+        }
+         
+        return false;
+    }
+
+    async done(done) {
+        const { sessionId } = MultiplayerGame.#socket.auth;
+        if (sessionId && this.isGameConnected()) {
+            try {
+                const { success, code, events } = await MultiplayerGame.#socket.timeout(3000).emitWithAck('set-done', { done });
+                console.log('set-done', { success, code, events });
+                if (!success) {
+                    done = !done;
+                }
+            } catch (e) {
+                // the server did not acknowledge the event
+                done = !done;
+            }
+
+            if (this.isOwner()) {
+                this.#owner.done = done;
+                MultiplayerGame.#doEvent('owner-update', { done });
+            } else if (this.isOpponent()) {
+                this.#opponent.done = done;
+                MultiplayerGame.#doEvent('opponent-update', { done });
+            }
+            
+            MultiplayerGame.#doEvent('set-done', done);
         }
          
         return false;

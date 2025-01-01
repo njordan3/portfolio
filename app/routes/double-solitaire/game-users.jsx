@@ -13,6 +13,8 @@ export default memo(function GameUsers() {
         setSpectators(game.spectators);
 
         MultiplayerGame.on('player-joined', (data) => setOpponent(data));
+        MultiplayerGame.on('player-left', () => setOpponent(undefined));
+
         MultiplayerGame.on('user-joined', (data) => {
             setSpectators((prevSpectators) => {
                 return { ...prevSpectators, [data.id]: data };
@@ -47,10 +49,10 @@ export default memo(function GameUsers() {
     return (
         <>
             {owner && (
-                <p>{owner.name} {owner.connected && '(connected)'} {owner.ready && '(ready)'}</p>
+                <p>{owner.name} {owner.connected && '(connected)'} {owner.ready && '(ready)'} {owner.done && '(done)'}</p>
             )}
             {opponent && (
-                <p>{opponent.name} {opponent.connected && '(connected)'} {opponent.ready && '(ready)'}</p>
+                <p>{opponent.name} {opponent.connected && '(connected)'} {opponent.ready && '(ready)'} {opponent.done && '(done)'}</p>
             )}
         </>
     );

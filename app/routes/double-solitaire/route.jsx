@@ -12,6 +12,7 @@ import HoldButton from '@/components/hold-button';
 import GameSettings from './game-settings';
 import UsernameInput from './username-input';
 import GameUsers from './game-users';
+import CountdownTimer from '@/components/countdown-timer';
 
 export const links = () => [
     {
@@ -33,6 +34,9 @@ export default function DoubleSolitaire() {
     const [connected, setConnected] = useState(false);
     const [ready, setReady] = useState(false);
     const [games, setGames] = useState({});
+    const [timer, setTimer] = useState(0);
+    const [gameStarted, setGameStarted] = useState(false);
+    const [done, setDone] = useState(false);
 
     const setMode = useCallback((mode = '') => {
         const params = new URLSearchParams();
@@ -59,7 +63,13 @@ export default function DoubleSolitaire() {
     const toggleReady = useCallback(() => {
         MultiplayerGame.getInstance().readyUp(!ready);
         setReady(!ready);
-    }, [ready])
+    }, [ready]);
+
+    
+    const toggleDone = useCallback(() => {
+        MultiplayerGame.getInstance().done(!done);
+        setReady(!done);
+    }, [done])
 
     useEffect(() => {
         MultiplayerGame.on('create-game', () => { 
@@ -67,10 +77,21 @@ export default function DoubleSolitaire() {
             setInGame(true);
         });
         MultiplayerGame.on('join-game', () => setInGame(true));
-        MultiplayerGame.on('leave-game', () => setInGame(false));
-        MultiplayerGame.on('game-end', () => setInGame(false));
+        MultiplayerGame.on('leave-game', () => {
+            setInGame(false);
+            setReady(false);
+            setDone(false);
+            setGameStarted(false);
+        });
+        MultiplayerGame.on('game-end', () => {
+            setInGame(false);
+            setReady(false);
+            setDone(false);
+            setGameStarted(false);
+        });
         
         MultiplayerGame.on('ready-up', (ready) => setReady(ready));
+        MultiplayerGame.on('set-done', (done) => setDone(done));
 
         MultiplayerGame.on('connect', () => setConnected(true));
         MultiplayerGame.on('disconnect', () => setConnected(false));
@@ -90,13 +111,26 @@ export default function DoubleSolitaire() {
             }
         });
 
+        MultiplayerGame.on('game-start-timer', ({ time = 0 }) => setTimer(time));
+        MultiplayerGame.on('game-start', () => {
+            setTimer(0);
+            setReady(false);
+            setGameStarted(true);
+        });
+
         MultiplayerGame.on('session', (data) => {
-            if (data.games) {
-                setGames(data.games);
+            const { games, game, userReady } = data;
+
+            if (games) {
+                setGames(games);
             }
-            if (data.game) {
+            if (game) {
                 setInGame(true);
-                setReady(data.ready);
+                setReady(userReady);
+
+                if (game.started) {
+                    setGameStarted(true);
+                }
             }
         });
 
@@ -122,7 +156,11 @@ export default function DoubleSolitaire() {
                 <button className={`btn ${isMultiplayer ? 'btn-primary' : 'btn-default btn-ghost'}`} onClick={() => setMode('multiplayer')}>Multiplayer</button>
                 {isMultiplayer && (
                     <>
-                        <UsernameInput className="mt-4" disabled={inGame} />
+                        {timer ? (
+                            <CountdownTimer className="bg-[var(--success-color)] text-[var(--invert-font-color)]" initialSeconds={timer} text="Starting In:" />
+                        ) : (
+                            <UsernameInput className="mt-4" disabled={inGame} />
+                        )}
                         <fieldset className="flex flex-col my-4 min-w-0 h-full">
                         {creatingGame && (
                             <GameSettings />
@@ -151,10 +189,18 @@ export default function DoubleSolitaire() {
                             )}
                             {inGame && (
                                 <>
-                                    {ready ? (
-                                        <button className="btn btn-primary-invert" onClick={toggleReady}>Unready</button>
+                                    {gameStarted ? (
+                                        done ? (
+                                            <button className="btn btn-primary-invert" onClick={toggleDone}>I'm Not Done</button>
+                                        ) : (
+                                            <button className="btn btn-primary" onClick={toggleDone}>I'm Done</button>
+                                        )
                                     ) : (
-                                        <button className="btn btn-primary" onClick={toggleReady}>Ready Up</button>
+                                        ready ? (
+                                            <button className="btn btn-primary-invert" onClick={toggleReady} disabled={timer}>Unready</button>
+                                        ) : (
+                                            <button className="btn btn-primary" onClick={toggleReady} disabled={timer}>Ready Up</button>
+                                        )
                                     )}
                                     <HoldButton className="btn btn-error" onComplete={leaveGame} text="Leave Game"/>
                                 </>

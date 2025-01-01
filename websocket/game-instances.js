@@ -68,6 +68,7 @@ export default class GameInstances {
       if (game) {
         GameInstances.io.to(gameId).emit('game-end', game.getStats());
         GameInstances.io.emit('update-game-browser', { action: 'delete', gameId });
+        game.allLeave(GameInstances.io);
         this.#instances.delete(gameId);
       }
     }

@@ -50,6 +50,16 @@ export default class User {
         return null;
     }
 
+    setDone(socket, done) {
+        if (this.gameState) {
+            this.gameState.done = done;
+            socket.to(this.gameState.gameId).emit('player-update', { id: this.#id, done });
+            return done;
+        }
+        
+        return null;
+    }
+
     setDisconnectTimeout(callback, timer, ...args) {
         if (this.#disconnectTimeout) {
             this.clearDisconnectTimeout();

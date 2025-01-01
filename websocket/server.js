@@ -75,7 +75,7 @@ export default function initWebSocketServer(httpServer) {
         return callback({
           success: false,
           events,
-          code: 'not-in-game',
+          code: 'not-playing-game',
         });
       }
       
@@ -89,8 +89,46 @@ export default function initWebSocketServer(httpServer) {
         response.code = 'unable-to-ready';
       }
 
+      if (ready && game.ready()) {
+        game.startStartTimer(() => {
+          game.started = true;
+          io.to(game.id).emit('game-start');
+        });
+        io.to(game.id).emit('game-start-timer', { time: game.startTime });
+      }
+
       return callback(response);
-    })
+    });
+
+    socket.on('set-done', ({ done }, callback) => {
+      const events = [];
+      const { sessionId, user } = socket;
+      const { gameState } = user;
+      const game = gameInstances.getGame(gameState?.gameId ?? null);
+      if (!game || !game.userIsPlaying(sessionId)) {
+        return callback({
+          success: false,
+          events,
+          code: 'not-playing-game',
+        });
+      }
+      
+      const doneResult = user.setDone(socket, done);
+      const success = doneResult === done;
+      const response = {
+        success,
+        events,
+      };
+      if (!success) {
+        response.code = 'unable-to-done';
+      }
+
+      if (done && game.done()) {
+        gameInstances.deleteGame(game.id);
+      }
+
+      return callback(response);
+    });
   
     socket.on('disconnecting', () => {
       // Leave games and remove user sessions

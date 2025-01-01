@@ -6,6 +6,7 @@ export class UserGameState {
 
     ready = false;
     connected = true;
+    done = false;
 
     constructor(gameId) {
         this.#gameId = gameId;

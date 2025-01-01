@@ -5,6 +5,15 @@ import { sanitizeString } from './utils.js';
 export default class Game {
     #id;
     name;
+    #startTime = 5;
+    get startTime() {
+        return this.#startTime;
+    }
+    #startTimer;
+    get startTimer() {
+        return this.#startTimer;
+    }
+    started = false
 
     // Session IDs
     #owner;
@@ -52,9 +61,14 @@ export default class Game {
         let deleteGame = false;
     
         if (this.userIsPlaying(sessionId)) {
-            // If a player left, end the game
+            // If owner leaves, then end game.
+            // If opponent leaves and the game is started, then end game. If game is not started, then don't end game.
             socket.to(this.#id).emit('player-left', user);
-            deleteGame = true;
+            deleteGame = this.started || sessionId === this.#owner;
+
+            if (!deleteGame) {
+                this.#opponent = undefined;
+            }
         } else if (this.userInGame(sessionId)) {
             // If not playing, but user is in game they are a spectator
             socket.to(this.#id).emit('user-left', user);
@@ -65,6 +79,43 @@ export default class Game {
         socket.leave(this.#id);
         
         return deleteGame;
+    }
+
+    allLeave(io) {
+        const userSessions = UserSessions.getInstance();
+
+        this.#spectators.forEach((spectator) => {
+            spectator = userSessions.getSession(spectator) ?? false;
+            if (spectator) {
+                spectator.gameState = undefined;
+            }
+        });
+
+        const owner = userSessions.getSession(this.#owner)?.user ?? false;
+        if (owner) {
+            owner.gameState = undefined;
+        }
+
+        const opponent = userSessions.getSession(this.#opponent)?.user ?? false;
+        if (opponent) {
+            opponent.gameState = undefined;
+        }
+
+        io.in(this.#id).socketsLeave(this.#id);
+    }
+
+    ready() {
+        const userSessions = UserSessions.getInstance();
+        return userSessions.getSession(this.#owner)?.user.gameState?.ready && userSessions.getSession(this.#opponent)?.user.gameState?.ready;
+    }
+
+    done() {
+        const userSessions = UserSessions.getInstance();
+        return userSessions.getSession(this.#owner)?.user.gameState?.done && userSessions.getSession(this.#opponent)?.user.gameState?.done;
+    }
+
+    startStartTimer(callback) {
+        this.#startTimer = setTimeout(callback, this.#startTime * 1000);
     }
 
     userInGame(sessionId) {
@@ -101,6 +152,7 @@ export default class Game {
             owner,
             opponent,
             spectators: spectators,
+            started: this.started,
         };
     }
 
