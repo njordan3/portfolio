@@ -45,8 +45,8 @@ export default class GameInstances {
 
     leaveGame(socket) {
       const { user } = socket;
-      const { gameInstance } = user;
-      const existingGame = this.getGame(gameInstance);
+      const { gameState } = user;
+      const existingGame = this.getGame(gameState?.gameId ?? null);
 
       if (existingGame) {
         const deleteGame = existingGame.leave(socket);

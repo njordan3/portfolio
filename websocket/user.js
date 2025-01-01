@@ -1,7 +1,7 @@
 import { randomId, sanitizeString } from "./utils.js";
 
 export default class User {
-    gameInstance;
+    gameState;
     #name = 'Anonymous';
     #id;
     #disconnectTimeout;
@@ -21,7 +21,33 @@ export default class User {
     set name(name) {
         const cleanName = sanitizeString(name);
         this.#name = cleanName ? cleanName.substring(0, 24) : 'Anonymous';
-        console.log({ name, _name: this.#name });
+    }
+
+    setConnected(socket, connected) {
+        if (this.gameState) {
+            if (connected !== this.gameState.connected) {   
+                socket.to(this.gameState.gameId).emit('player-update', { id: this.#id, connected });
+
+                if (connected) {
+                    socket.join(this.gameState.gameId); // Rejoin game room if reconnecting
+                }
+            }
+            this.gameState.connected = connected;
+            
+            return connected;
+        }
+        
+        return null;
+    }
+
+    readyUp(socket, ready) {
+        if (this.gameState) {
+            this.gameState.ready = ready;
+            socket.to(this.gameState.gameId).emit('player-update', { id: this.#id, ready });
+            return ready;
+        }
+        
+        return null;
     }
 
     setDisconnectTimeout(callback, timer, ...args) {
@@ -35,6 +61,18 @@ export default class User {
     clearDisconnectTimeout() {
         clearTimeout(this.#disconnectTimeout);
         this.#disconnectTimeout = undefined;
+    }
+
+    toGameJSON() {
+        if (!this.gameState) {
+            return this.toJSON();
+        }
+
+        return {
+            id: this.#id,
+            name: this.#name,
+            ...this.gameState.toJSON(),
+        };
     }
 
     toJSON() {

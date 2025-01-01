@@ -8,12 +8,10 @@ export default function initWebSocketServer(httpServer) {
   const gameInstances = GameInstances.getInstance();
   
   io.on('connection', (socket) => {
-    console.log('connected', socket.user.id, socket.user.name, socket.rooms);
-    console.log(userSessions.toJSON());
     socket.user.clearDisconnectTimeout();
+    socket.user.setConnected(socket, true);
   
     socket.on('create-game', ({ name, username }, callback) => {
-      console.log('create-game', username)
       socket.user.name = username;
       const events = [];
   
@@ -25,7 +23,7 @@ export default function initWebSocketServer(httpServer) {
       console.log('created game', gameInstances.toJSON());
       callback({
         success: true,
-        game: newGame,
+        game: newGame.toGameJSON(),
         events,
       });
     });
@@ -49,7 +47,7 @@ export default function initWebSocketServer(httpServer) {
 
       return callback({
         success: true,
-        game: joinedGame,
+        game: joinedGame.toGameJSON(),
         events,
       });
     });
@@ -67,18 +65,45 @@ export default function initWebSocketServer(httpServer) {
         events,
       });
     });
+
+    socket.on('ready-up', ({ ready }, callback) => {
+      const events = [];
+      const { sessionId, user } = socket;
+      const { gameState } = user;
+      const game = gameInstances.getGame(gameState?.gameId ?? null);
+      if (!game || !game.userIsPlaying(sessionId)) {
+        return callback({
+          success: false,
+          events,
+          code: 'not-in-game',
+        });
+      }
+      
+      const readyResult = user.readyUp(socket, ready);
+      const success = readyResult === ready;
+      const response = {
+        success,
+        events,
+      };
+      if (!success) {
+        response.code = 'unable-to-ready';
+      }
+
+      return callback(response);
+    })
   
     socket.on('disconnecting', () => {
       // Leave games and remove user sessions
       const { sessionId, user } = socket;
+      user.setConnected(socket, false);
 
       user.setDisconnectTimeout((sessionId) => {
         const session = userSessions.getSession(sessionId);
 
         if (session) {
           const { user } = session;
-          const { gameInstance } = user;
-          const existingGame = gameInstances.getGame(gameInstance);
+          const { gameState } = user;
+          const existingGame = gameInstances.getGame(gameState?.gameId ?? null);
 
           if (existingGame) {
             const deleteGame = existingGame.leave(socket);
@@ -90,24 +115,30 @@ export default function initWebSocketServer(httpServer) {
 
           userSessions.deleteSession(sessionId);
         }
-      }, 60000, sessionId)
-
-      console.log('disconnecting', socket.user.id, socket.user.name, socket.rooms); // the Set contains at least the socket ID
-      console.log(userSessions.toJSON());
+      }, 60000, sessionId);
     });
   
     // Deliver session and user data for client's safe-keeping
     const { sessionId, user } = socket;
-    socket.emit('session', {
+    const session = {
       sessionId: sessionId,
       userId: user.id,
       games: gameInstances,
-    });
+    };
+
+    
+    const game = gameInstances.getGame(user.gameState?.gameId ?? null);
+    if (game) {
+      session.game = game.toGameJSON();
+    }
+
+    socket.emit('session', session);
   });
   
   // Middleware
   io.use((socket, next) => {
-    const sessionId = socket.handshake.auth.sessionId;
+    const { sessionId } = socket.handshake.auth;
+
     if (sessionId) {
       const session = userSessions.getSession(sessionId);
   
