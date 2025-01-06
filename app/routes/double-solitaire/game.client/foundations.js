@@ -1,20 +1,29 @@
-import { Ranks } from './constants';
-import Stack from './stack';
+import { Game, Card, Stack } from './internal';
 
-export default class Foundations extends Stack {
-    #validEmptyDropRank = Ranks.ACE;
-
+export class Foundations extends Stack {
     isValidDrop(card) {
-        if (this.up.length <= 0 && this.down.length <= 0 && card.rank === this.#validEmptyDropRank) {
+        const validEmptyDropRank = Game.ranks.ACE;
+        if (this.up.length <= 0 && this.down.length <= 0 && card.rank === validEmptyDropRank) {
             return true;
         }
 
         const topCard = this.top('up');
         if (topCard) {
-            const topCardValue = topCard.rank === Ranks.ACE ? -1 : topCard.rank;
+            const topCardValue = topCard.rank === Game.ranks.ACE ? -1 : topCard.rank;
             return (topCard.suit === card.suit) && (topCardValue + 1 === card.rank);
         }
         
         return false;
+    }
+
+    static createFromObject(object) {
+        const { position: { x, y }, width, height, up } = object;
+        const foundations = new Foundations(x, y, width, height);
+        for (let j = 0; j < up.length; j++) { // Foundations only have up cards
+            const { suit, rank } = up[j];
+            foundations.push(new Card(suit, rank), 'up');
+        }
+
+        return foundations;
     }
 }

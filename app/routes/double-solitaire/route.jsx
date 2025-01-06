@@ -12,17 +12,30 @@ import HoldButton from '@/components/hold-button';
 import GameSettings from './game-settings';
 import UsernameInput from './username-input';
 import GameUsers from './game-users';
-import CountdownTimer from '@/components/countdown-timer';
+import { Game } from './game.client/internal';
+import CountdownTimer, { links as CountdownTimerLinks } from '@/components/countdown-timer';
 
 export const links = () => [
     {
         rel: 'stylesheet',
         href: routeCSS
     },
+    ...CountdownTimerLinks,
 ];
 
+/**
+ * Load Game constants and return a promise to load the needed images.
+ * This prevents hydration errors, prevents the server from loading the board,
+ * and prevents the client from prematurely rendering the board before the Game constants and images are loaded.
+ */
 export const clientLoader = async () => {
-    return await Promise.all([ getImage(cardSpriteSheet), getImage(feltTexture) ]);
+    const response = await fetch('/double-solitaire/settings', { method: 'POST' });
+    const { dimensions, ranks, suits } = await response.json();
+    Game.dimensions = Object.freeze(dimensions.singleplayer);
+    MultiplayerGame.dimensions = Object.freeze(dimensions.multiplayer);
+    Game.ranks = Object.freeze(ranks);
+    Game.suits = Object.freeze(suits);
+    return Promise.all([ getImage(cardSpriteSheet), getImage(feltTexture) ]);
 };
 
 export default function DoubleSolitaire() {
@@ -119,7 +132,7 @@ export default function DoubleSolitaire() {
         });
 
         MultiplayerGame.on('session', (data) => {
-            const { games, game, userReady } = data;
+            const { games, game, userReady, userDone } = data;
 
             if (games) {
                 setGames(games);
@@ -127,6 +140,7 @@ export default function DoubleSolitaire() {
             if (game) {
                 setInGame(true);
                 setReady(userReady);
+                setDone(userDone);
 
                 if (game.started) {
                     setGameStarted(true);
@@ -154,6 +168,7 @@ export default function DoubleSolitaire() {
                 </div>
                 <button disabled={inGame} className={`btn ${!isMultiplayer ? 'btn-primary' : 'btn-default btn-ghost'}`} onClick={() => setMode()}>Solo</button>
                 <button className={`btn ${isMultiplayer ? 'btn-primary' : 'btn-default btn-ghost'}`} onClick={() => setMode('multiplayer')}>Multiplayer</button>
+
                 {isMultiplayer && (
                     <>
                         {timer ? (

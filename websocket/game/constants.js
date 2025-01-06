@@ -21,3 +21,9 @@ export const Ranks = Object.freeze({
     KING: 11,
     ACE: 12,
 });
+
+export const PlayerType = Object.freeze({
+    OWNER: 0,
+    OPPONENT: 1,
+    SPECTATOR: 2,
+});

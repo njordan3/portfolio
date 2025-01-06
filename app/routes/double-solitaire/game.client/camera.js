@@ -1,30 +1,60 @@
-export default class Camera {
-    #scale = 1;
+export class Camera {
+    #matrix = [1, 0, 0, 1, 0, 0]; // current view transform
     #zoomInStep = 1.1;
     #zoomOutStep;
 
     #maxScale = 3;
     #minScale = 0.5;
 
+    #scale = 1;
+    get scale() {
+        return this.#scale;
+    }
+
     #backgroundContext;
     #foregroundContext;
-    #position = { x: 0, y: 0 };
-    #needsUpdate = true;
-    #matrix = [1, 0, 0, 1, 0, 0]; // current view transform
-
-    constructor() {
-        this.#zoomOutStep = 1/this.#zoomInStep;
-    }
-
-    get needsUpdate() {
-        return this.#needsUpdate;
-    }
-
     get contexts() {
         return {
             background: this.#backgroundContext,
             foreground: this.#foregroundContext,
         };
+    }
+
+    position = { x: 0, y: 0 };
+
+    #needsUpdate = true;
+    get needsUpdate() {
+        return this.#needsUpdate;
+    }
+    
+    #rotation = { x: 1, y: 0 };
+    set rotation(radian) {
+        this.#rotation = {
+            x: Math.cos(radian),
+            y: Math.sin(radian),
+        };
+    }
+    get rotation() {
+        return this.#rotation;
+    }
+
+    // Singleton
+    static $instance;
+
+    constructor() {
+        if (this.$instance) {
+            throw Error('Multiple cameras? That\'s crazy...');
+        }
+
+        this.#zoomOutStep = 1/this.#zoomInStep;
+    }
+
+    static getInstance() {
+        if (!this.$instance) {
+            this.$instance = new Camera();
+        }
+
+        return this.$instance;
     }
 
     setContexts(fContext, bContext) {
@@ -54,10 +84,12 @@ export default class Camera {
 
     update() {
         this.#needsUpdate = false;
-        this.#matrix[3] = this.#matrix[0] = this.#scale;
-        this.#matrix[2] = this.#matrix[1] = 0;
-        this.#matrix[4] = this.#position.x;
-        this.#matrix[5] = this.#position.y;
+
+        this.#matrix[3] = this.#matrix[0] = this.#rotation.x * this.#scale;
+        this.#matrix[1] = this.#rotation.y * this.#scale;
+        this.#matrix[2] = -this.#matrix[1];
+        this.#matrix[4] = this.position.x;
+        this.#matrix[5] = this.position.y;
     }
 
     pan(position) {
@@ -66,9 +98,8 @@ export default class Camera {
         }
 
         const { x, y } = position;
-
-        this.#position.x += x;
-        this.#position.y += y;
+        this.position.x += x;
+        this.position.y += y;
         this.#needsUpdate = true;
     }
 
@@ -86,8 +117,8 @@ export default class Camera {
         const { x, y } = position;
 
         this.#scale = newScale;
-        this.#position.x = x - (x - this.#position.x) * amount;
-        this.#position.y = y - (y - this.#position.y) * amount;
+        this.position.x = x - (x - this.position.x) * amount;
+        this.position.y = y - (y - this.position.y) * amount;
         this.#needsUpdate = true;
     }
 
@@ -97,8 +128,8 @@ export default class Camera {
 
     getBoardPosition(x, y) {
         return {
-            x: (-this.#position.x + x) / this.#scale,
-            y: (-this.#position.y + y) / this.#scale,
+            x: this.#rotation.x * (-this.position.x + x) / this.#scale,
+            y: this.#rotation.x * (-this.position.y + y) / this.#scale,
         };
     }
 }

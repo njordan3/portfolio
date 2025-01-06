@@ -1,21 +1,16 @@
-import { GameController } from "./game-controller";
-import { SingleplayerGame } from "./singleplayer-game";
+import { MultiplayerDimensions } from "./dimensions.js";
 
-export class Stack {
+export default class Stack {
     up = [];
     down = [];
     _position = { x: 0, y: 0 };
     _width = 0;
     _height = 0;
+    _playerType;
 
-    // Background render box
-    #box = { x: 0, y: 0, width: 0, height: 0 };
-
-    constructor(x, y, width, height) {
-        // Prevents infinite singleplayer initialization
-        const { cardMargin } = GameController.isMultiplayer()
-            ? GameController.getGame().getDimensions()
-            : SingleplayerGame.dimensions;
+    constructor(x, y, width, height, playerType) {
+        const { cardMargin } = MultiplayerDimensions.getInstance();
+        this._playerType = playerType;
 
         this._position = { x, y };
         this._width = width;
@@ -25,7 +20,6 @@ export class Stack {
         y -= cardMargin;
         width += (2*cardMargin);
         height += (2*cardMargin);
-        this.#box = { x, y, width, height };
     }
 
     get position() {
@@ -33,7 +27,7 @@ export class Stack {
     }
 
     push(card, index = 'down') {
-        // We don't want reference to stack position object        
+        // We don't want reference to stack position object
         card.position = {
             x: this._position.x,
             y: this._position.y
@@ -59,13 +53,6 @@ export class Stack {
     }
 
     reset() {}
-
-    renderBackground(context) {
-        const { x, y, width, height } = this.#box;
-        context.strokeStyle = 'gold';
-        console.log({x , y});
-        context.strokeRect(x, y, width, height);
-    }
 
     isValidDrop() {
         return false;
@@ -94,8 +81,11 @@ export class Stack {
         }
 
         return {
-            up,
-            down,
+            up: this.up,
+            down: this.down,
+            position: this._position,
+            width: this._width,
+            height: this._height,
         };
     }
 }

@@ -1,9 +1,5 @@
 import { generateRandomInt } from '@/utils/misc';
-import Foundations from './foundations';
-import { Game } from './game';
-import Hand from './hand';
-import Tableau from './tableau';
-import Card from './card';
+import { Game, Camera, Card, Hand, Tableau, Foundations } from './internal';
 
 export class SingleplayerGame extends Game {
     constructor() {
@@ -12,32 +8,58 @@ export class SingleplayerGame extends Game {
         if (this.$instance) {
             throw Error('Singleplayer Game already initialized');
         }
+        
+        const existingGame = localStorage.getItem('singleplayerGame');
+        if (existingGame) {
+            try {
+                const { hand, tableau, foundations } = JSON.parse(existingGame);
+                const { cardWidth, cardHeight, cardGap, handDownX, handDownY, tableauX, tableauY, foundationX, foundationY } = SingleplayerGame.dimensions;
+                
+                this.hand = new Hand(handDownX, handDownY, cardWidth, cardHeight);
+                for (let i = 0; i < hand.up.length; i++) {
+                    const { suit, rank } = hand.up[i];
+                    this.hand.push(new Card(suit, rank), 'up');
+                }
+                for (let i = 0; i < hand.down.length; i++) {
+                    const { suit, rank } = hand.down[i];
+                    this.hand.push(new Card(suit, rank), 'down');
+                }
+                this.hand.reset();
 
-        // Calculate dimensions/positions of our stacks. These will never change during a game.
-        const dimensions = SingleplayerGame.dimensions;
+                this.tableau = Array.from({ length: 7 }, (e, i) => {
+                    const x = tableauX + ((cardWidth + cardGap) * i);
+                    const y = tableauY;
+                    const newTableau = new Tableau(x, y, cardWidth, cardHeight);
+                    for (let j = 0; j < tableau[i].up.length; j++) {
+                        const { suit, rank } = tableau[i].up[j];
+                        newTableau.push(new Card(suit, rank), 'up');
+                    }
+                    for (let j = 0; j < tableau[i].down.length; j++) {
+                        const { suit, rank } = tableau[i].down[j];
+                        newTableau.push(new Card(suit, rank), 'down');
+                    }
 
-        dimensions.boardWidth = 2000;
-        dimensions.boardHeight = 1000;
+                    return newTableau;
+                });
+                
+                this.foundations = Array.from({ length: 4 }, (e, i) => {
+                    const x = foundationX + ((cardWidth + cardGap) * i);
+                    const y = foundationY;
+                    const newFoundation = new Foundations(x, y, cardWidth, cardHeight);
+                    for (let j = 0; j < foundations[i].up.length; j++) { // Foundations only have up cards
+                        const { suit, rank } = foundations[i].up[j];
+                        newFoundation.push(new Card(suit, rank), 'up');
+                    }
 
-        dimensions.cardYOffset = Math.round(dimensions.cardHeight/3);
-        dimensions.cardXOffset = Math.round(dimensions.cardWidth/3);
-
-        dimensions.centerX = dimensions.boardWidth/2;
-        dimensions.centerY = dimensions.boardHeight/2;
-
-        dimensions.foundationX = dimensions.centerX - (dimensions.cardWidth * 2) - (dimensions.cardGap * 1.5);
-        dimensions.foundationY = dimensions.centerY - (dimensions.cardHeight/2);
-
-        dimensions.tableauX = dimensions.centerX - (dimensions.cardWidth * 3.5) - (dimensions.cardGap * 3);
-        dimensions.tableauY = dimensions.foundationY + dimensions.cardHeight + dimensions.cardGap;
-
-        dimensions.handDownX = dimensions.tableauX - (dimensions.cardWidth * 2) - (dimensions.cardGap * 2);
-        dimensions.handDownY = dimensions.tableauY + dimensions.cardHeight + dimensions.cardGap;
-
-        dimensions.handUpX = dimensions.handDownX + dimensions.cardWidth + dimensions.cardGap;
-        dimensions.handUpY = dimensions.handDownY;
-
-        SingleplayerGame.dimensions = Object.freeze(dimensions);
+                    return newFoundation;
+                });
+            } catch (e) {
+                console.error('Error restoring singleplayer game', e);
+                this.deal();
+            }
+        } else {
+            this.deal();
+        }
     }
 
     static getInstance() {
@@ -47,31 +69,34 @@ export class SingleplayerGame extends Game {
 
         return this.$instance;
     }
+    
+    getDimensions() {
+        return {
+            ...SingleplayerGame.dimensions,
+            startX: -SingleplayerGame.dimensions.startX,
+            startY: -SingleplayerGame.dimensions.startY
+        };
+    }
 
     reset() {
         const { cardWidth, cardHeight, cardGap, handDownX, handDownY, tableauX, tableauY, foundationX, foundationY } = SingleplayerGame.dimensions;
 
         this.hand = new Hand(handDownX, handDownY, cardWidth, cardHeight);
 
-        for (let i = 0; i < 52; i++) {
-            const rank = i % 13;
-            const suit = i % 4;
-            const card = new Card(suit, rank);
-            card.context = SingleplayerGame.$cardFrontImages[i];
-
-            this.hand.push(card);
+        for (let suit = 0; suit < 4; suit++) {
+            for (let rank = 0; rank < 13; rank++) {
+                this.hand.push(new Card(suit, rank));
+            }
         }
 
         this.tableau = Array.from({ length: 7 }, (e, i) => {
             const x = tableauX + ((cardWidth + cardGap) * i);
             const y = tableauY;
-
             return new Tableau(x, y, cardWidth, cardHeight);
         });
         this.foundations = Array.from({ length: 4 }, (e, i) => {
             const x = foundationX + ((cardWidth + cardGap) * i);
             const y = foundationY;
-
             return new Foundations(x, y, cardWidth, cardHeight);
         });
     }
@@ -98,6 +123,14 @@ export class SingleplayerGame extends Game {
             this.tableau[i].flip();
         }
 
-        this.camera.forceUpdate();
+        Camera.getInstance().forceUpdate();
+    }
+
+    save() {
+        // localStorage.setItem('singleplayerGame', JSON.stringify({
+        //     tableau: this.tableau,
+        //     foundations: this.foundations,
+        //     hand: this.hand,
+        // }));
     }
 }

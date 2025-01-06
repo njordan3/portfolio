@@ -4,10 +4,6 @@ export class Mouse {
 
     button = false;
 
-    constructor() {
-
-    }
-
     set position(position) {
         this.#oldPosition = this.#position;
         this.#position = position;
@@ -19,5 +15,22 @@ export class Mouse {
 
     get oldPosition() {
         return this.#oldPosition;
+    }
+
+    // Singleton
+    static $instance;
+
+    constructor() {
+        if (this.$instance) {
+            throw Error('Multiple mice? That\'s crazy...');
+        }
+    }
+
+    static getInstance() {
+        if (!this.$instance) {
+            this.$instance = new Mouse();
+        }
+
+        return this.$instance;
     }
 }

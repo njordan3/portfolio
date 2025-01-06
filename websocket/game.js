@@ -1,3 +1,6 @@
+import { PlayerType } from './game/constants.js';
+import { MultiplayerDimensions } from './game/dimensions.js';
+import Foundations from './game/foundations.js';
 import { UserGameState } from './user-game-state.js';
 import UserSessions from './user-sessions.js';
 import { sanitizeString } from './utils.js';
@@ -19,6 +22,9 @@ export default class Game {
     #owner;
     #opponent;
     #spectators = new Set();
+    
+    // 8 piles that build on the 8 aces
+    #foundations;
 
     constructor(socket, id, name) {
         this.#id = id;
@@ -26,7 +32,16 @@ export default class Game {
         this.name = cleanName ? cleanName.substring(0, 24) : 'Anonymous Game';
         this.#owner = socket.sessionId;
 
+        const { cardWidth, cardHeight, cardGap, foundationX, foundationY } = MultiplayerDimensions.getInstance();
+
+        this.#foundations = Array.from({ length: 8 }, (e, i) => {
+            const x = foundationX + ((cardWidth + cardGap) * i);
+            const y = foundationY;
+            return new Foundations(x, y, cardWidth, cardHeight);
+        });
+
         socket.user.gameState = new UserGameState(this.#id);
+        socket.user.gameState.dealCards(PlayerType.OWNER);
         socket.join(this.#id);
     }
 
@@ -49,6 +64,7 @@ export default class Game {
             socket.to(this.#id).emit('user-joined', user);
             this.#spectators.add(sessionId);
         } else {
+            socket.user.gameState.dealCards(PlayerType.OPPONENT);
             socket.to(this.#id).emit('player-joined', user.toGameJSON());
             this.#opponent = sessionId;
         }
@@ -119,11 +135,19 @@ export default class Game {
     }
 
     userInGame(sessionId) {
-        return sessionId === this.#owner || sessionId === this.#opponent || this.#spectators.has(sessionId);
+        return this.userIsOwner(sessionId) || this.userIsOpponent(sessionId) || this.#spectators.has(sessionId);
     }
 
     userIsPlaying(sessionId) {
         return sessionId === this.#owner || sessionId === this.#opponent;
+    }
+
+    userIsOwner(sessionId) {
+        return sessionId === this.#owner;
+    }
+
+    userIsOpponent(sessionId) {
+        return sessionId === this.#opponent;
     }
 
     getStats() {
@@ -153,6 +177,7 @@ export default class Game {
             opponent,
             spectators: spectators,
             started: this.started,
+            foundations: this.#foundations
         };
     }
 

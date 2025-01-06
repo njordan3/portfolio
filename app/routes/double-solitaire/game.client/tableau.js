@@ -1,12 +1,13 @@
-import { Ranks, Suits } from './constants';
-import { getGame } from './game-controller';
-import Stack from './stack';
+import { GameController } from './game-controller';
+import { SingleplayerGame } from './singleplayer-game';
+import { Game, Card, Stack } from './internal';
 
-export default class Tableau extends Stack {
-    #validEmptyDropRank = Ranks.KING;
-
+export class Tableau extends Stack {
     push(card, index = 'down') {
-        const { cardYOffset } = getGame().dimensions;
+        // Prevents infinite singleplayer initialization
+        const { cardYOffset } = GameController.isMultiplayer()
+            ? GameController.getGame().getDimensions()
+            : SingleplayerGame.dimensions;
         const position = {
             x: this._position.x,
             y: this._position.y
@@ -16,7 +17,8 @@ export default class Tableau extends Stack {
             const topCard = this.top('up');
 
             if (topCard) {
-                position.y = topCard.position.y + cardYOffset;
+                const sign = card.yFlipped ? -1 : 1;
+                position.y = topCard.position.y + (sign * cardYOffset);
                 this._height += cardYOffset; // Grow hitbox height
             }
         }
@@ -30,7 +32,10 @@ export default class Tableau extends Stack {
      * Gets called when dragged cards are dropped
      */
     reset() {
-        const { cardHeight, cardYOffset } = getGame().dimensions;
+        // Prevents infinite singleplayer initialization
+        const { cardHeight, cardYOffset } = GameController.isMultiplayer()
+            ? GameController.getGame().getDimensions()
+            : SingleplayerGame.dimensions;
         const position = {
             x: this._position.x,
             y: this._position.y
@@ -38,7 +43,8 @@ export default class Tableau extends Stack {
 
         for (let i = 0; i < this.up.length; i++) {
             this.up[i].position.x = position.x;
-            this.up[i].position.y = position.y + (i * cardYOffset);
+            const sign = this.up[i].yFlipped ? -1 : 1;
+            this.up[i].position.y = position.y + (i * sign * cardYOffset);
         }
 
         // Set hitbox height
@@ -54,15 +60,35 @@ export default class Tableau extends Stack {
     }
 
     isValidDrop(card) {
-        if (this.up.length <= 0 && this.down.length <= 0 && card.rank === this.#validEmptyDropRank) {
+        const validEmptyDropRank = Game.ranks.KING;
+        if (this.up.length <= 0 && this.down.length <= 0 && card.rank === validEmptyDropRank) {
             return true;
         }
 
         const topCard = this.top('up');
         if (topCard) {
-            return (topCard.suit < Suits.CLUBS !== card.suit < Suits.CLUBS) && (topCard.rank - 1 === card.rank);
+            return (topCard.suit < Game.suits.CLUBS !== card.suit < Game.suits.CLUBS) && (topCard.rank - 1 === card.rank);
         }
         
         return false;
+    }
+
+    static createFromObject(object) {
+        const { position: { x, y }, width, height, up, down } = object;
+        const tableau = new Tableau(x, y, width, height);
+        for (let j = 0; j < up.length; j++) { // Foundations only have up cards
+            const { suit, rank, position, yFlipped } = up[j];
+            const card = new Card(suit, rank, yFlipped);
+            card.position = position;
+            tableau.push(card, 'up');
+        }
+        for (let j = 0; j < down.length; j++) {
+            const { suit, rank, position, yFlipped } = down[j];
+            const card = new Card(suit, rank, yFlipped);
+            card.position = position;
+            tableau.push(card, 'down');
+        }
+
+        return tableau;
     }
 }

@@ -1,8 +1,12 @@
 import { useState, useEffect, memo, useMemo } from "react";
+import styles from './index.css?url';
+
+export const links = [
+    { rel: "stylesheet", href: styles },
+];
 
 export default memo(function CountdownTimer({ initialSeconds = 0, className = '', text = 'Countdown:' }) {
   const [milliseconds, setMilliseconds] = useState(initialSeconds * 1000);
-  const [show, setShow] = useState(true);
 
   useEffect(() => {
     let timer = setInterval(() => {
@@ -12,13 +16,6 @@ export default memo(function CountdownTimer({ initialSeconds = 0, className = ''
         clearInterval(timer);
       }
     }, 10); // Update every 10ms for millisecond precision
-
-    if (milliseconds === 0) {
-      clearInterval(timer);
-      timer = setInterval(() => {
-        setShow((prev) => !prev);
-      }, 500); // Blink at the end of countdown
-    }
 
     return () => clearInterval(timer);
   }, [milliseconds]);
@@ -32,7 +29,9 @@ export default memo(function CountdownTimer({ initialSeconds = 0, className = ''
     <div className="mt-4">
       {text}
       <div className={`border border-font-color py-[0.7em] px-[0.5em] flex justify-center ${className}`}>
-        <span className={`${show ? '' : 'invisible'} select-none`}>
+        <span
+          className={`${milliseconds === 0 ? 'blink' : ''} select-none`}
+        >
           {milliseconds === 0 ? (
             <>0.000</>
           ) : (

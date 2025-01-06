@@ -1,6 +1,6 @@
-import { Mouse } from './mouse';
-import Camera from './camera';
+import { Camera, Hand, Mouse } from './internal'
 import cardSpriteSheet from '@images/decksprite.png';
+import felt from '@images/tabletopfelt.jpg';
 import { getImage } from '@/utils/images';
 
 /**
@@ -11,21 +11,41 @@ export class Game {
     foundations;    // 4 piles that build on the 4 aces
     hand;           // Cards in hand
 
-    camera;
-    mouse;
+    static $cardSpriteSheet;
+    static get cardSpriteSheet() {
+        return Game.$cardSpriteSheet;
+    }
+
+    static $boardTexture;
+    static get boardTexture() {
+        return Game.$boardTexture;
+    }
 
     static $cardFrontImages = [];
+    static get cardFrontImages() {
+        return Game.$cardFrontImages;
+    }
+
+    static $cardFrontImagesFlipped = [];
+    static get cardFrontImagesFlipped() {
+        return Game.$cardFrontImagesFlipped;
+    }
+
     static $cardBackImage;
+    static get cardBackImage() {
+        return Game.$cardBackImage;
+    }
 
-    static $instance;
-
+    // Gets loaded from the server
+    static ranks;
+    static suits;
     static dimensions = {
         boardWidth: 0,
         boardHeight: 0,
-        cardWidth: 81,
-        cardHeight: 117,
-        cardGap: 20,
-        cardMargin: 5,
+        cardWidth: 0,
+        cardHeight: 0,
+        cardGap: 0,
+        cardMargin: 0,
         cardXOffset: 0,
         cardYOffset: 0,
         centerX: 0,
@@ -38,26 +58,14 @@ export class Game {
         handUpY: 0,
         foundationX: 0,
         foundationY: 0,
+        startX: 0,
+        startY: 0,
     };
 
     $draggingCardsData = null;
 
-    static $cardSpriteSheet;
-
-    constructor() {
-        if (!this.$instance) {
-            this.mouse = new Mouse();
-            this.camera = new Camera();
-        }
-    }
-
-    get cardBackImage() {
-        return Game.$cardBackImage;
-    }
-
-    get dimensions() {
-        return Game.dimensions;
-    }
+    // Singleton
+    static $instance;
 
     /**
      * Load card front and back images into offscreen canvas contexts.
@@ -71,25 +79,45 @@ export class Game {
 
         const { cardWidth, cardHeight } = Game.dimensions;
         return Game.#assetPromise = new Promise(async (resolve) => {
-            const value = await getImage(cardSpriteSheet);
-            Game.$cardSpriteSheet = value;
+            const [spriteSheet, boardTexture] = await Promise.all([getImage(cardSpriteSheet), getImage(felt)]);
+            Game.$cardSpriteSheet = spriteSheet;
+            Game.$boardTexture = boardTexture;
 
             Game.$cardFrontImages = [];
-            for (let i = 0; i < 52; i++) {
-                const rank = i % 13;
-                const suit = i % 4;
-    
-                const canvas = new OffscreenCanvas(cardWidth, cardHeight);
-                const context = canvas.getContext('2d', { alpha: false });
-                context.drawImage(
-                    Game.$cardSpriteSheet,
-                    rank * cardWidth, suit * cardHeight,
-                    cardWidth, cardHeight,
-                    0, 0,
-                    cardWidth, cardHeight,
-                );
-                context.save();
-                Game.$cardFrontImages.push(context);
+            for (let suit = 0; suit < 4; suit++) {
+                for (let rank = 0; rank < 13; rank++) {
+                    {
+                        const canvas = new OffscreenCanvas(cardWidth, cardHeight);
+                        const context = canvas.getContext('2d', { alpha: false });
+                        context.drawImage(
+                            Game.$cardSpriteSheet,
+                            rank * cardWidth, suit * cardHeight,
+                            cardWidth, cardHeight,
+                            0, 0,
+                            cardWidth, cardHeight,
+                        );
+                        context.save();
+                        Game.$cardFrontImages.push(context);
+                    }
+
+                    {
+                        const canvas = new OffscreenCanvas(cardWidth, cardHeight);
+                        const context = canvas.getContext('2d', { alpha: false });
+                        context.translate(cardWidth, cardHeight);
+                        context.rotate(Math.PI);
+                        context.drawImage(
+                            Game.$cardSpriteSheet,
+                            rank * cardWidth, suit * cardHeight,
+                            cardWidth, cardHeight,
+                            0, 0,
+                            cardWidth, cardHeight,
+                        );
+                        context.save();
+
+                        Game.$cardFrontImagesFlipped.push(context);
+                    }
+                    
+                }
             }
     
             const canvas = new OffscreenCanvas(cardWidth, cardHeight);
@@ -109,6 +137,85 @@ export class Game {
         });
     }
 
+    getDimensions() {
+        return Game.dimensions;
+    }
+
+    renderForeground() {
+        const camera = Camera.getInstance();
+        
+        const { foreground } = camera.contexts;
+        const { tableau, foundations, hand } = this;
+
+        if (hand.top('down')) {
+            foreground.drawImage(Game.cardBackImage.canvas, hand.position.x, hand.position.y);
+        }
+
+        const draggingCards = [];
+
+        // Render only last 3 of hand up
+        const indexClamp = (hand.up.length > Hand.dealAmount ? hand.up.length - Hand.dealAmount : 0);
+        for (let i = indexClamp; i < hand.up.length; i++) {
+            const { isDragging } = hand.up[i];
+            if (isDragging) {
+                draggingCards.push(hand.up[i]);
+                continue;
+            }
+
+            hand.up[i].draw(foreground);
+        }
+        
+        for (let i = 0; i < tableau.length; i++) {
+            if (tableau[i].down.length > 0) {
+                foreground.drawImage(Game.cardBackImage.canvas, tableau[i].position.x, tableau[i].position.y);
+            }
+
+            for (let j = 0; j < tableau[i].up.length; j++) {
+                const { isDragging } = tableau[i].up[j];
+                if (isDragging) {
+                    draggingCards.push(tableau[i].up[j]);
+                    continue;
+                }
+
+                tableau[i].up[j].draw(foreground);
+            }
+        }
+
+        // Render only top cards
+        for (let i = 0; i < foundations.length; i++) {
+            const topCard = foundations[i].top('up');
+
+            if (topCard) {
+                topCard.draw(foreground);
+            }
+        }
+
+        // Render dragging cards last so they appear on top
+        for (let i = 0; i < draggingCards.length; i++) {
+            draggingCards[i].draw(foreground);
+        }
+    }
+
+    renderBackground() {
+        const camera = Camera.getInstance();
+
+        const { background } = camera.contexts;
+        const { boardWidth, boardHeight } = this.getDimensions();
+
+        background.fillStyle = background.createPattern(Game.$boardTexture, 'repeat');
+        background.fillRect(0, 0, boardWidth, boardHeight);
+
+        for (let i = 0; i < this.tableau.length; i++) {
+            this.tableau[i].renderBackground(background);
+        }
+
+        for (let i = 0; i < this.foundations.length; i++) {
+            this.foundations[i].renderBackground(background);
+        }
+
+        this.hand.renderBackground(background);
+    }
+
     reset() {}
 
     deal() {}
@@ -126,13 +233,14 @@ export class Game {
      */
     #pickTargetAtPoint(x, y) {
         if ( this.hand.isPointIntersected(x, y) ) {
+            console.log('asd');
             this.$onCardPick(x, y);
 
             if ( !this.hand.restart() ) {
                 this.hand.flip();
             }
 
-            this.camera.forceUpdate();
+            Camera.getInstance().forceUpdate();
             return;
         }
 
@@ -199,6 +307,7 @@ export class Game {
      */
     #dropCardsAtPoint(x, y) {
         const { stack, cards } = this.$draggingCardsData;
+        const camera = Camera.getInstance();
 
         for (let i = this.tableau.length-1; i >= 0; i--) {
             if ( this.tableau[i].isPointIntersected(x, y) ) {
@@ -209,7 +318,7 @@ export class Game {
                     }
                     
                     this.#resetDraggingCardsData();
-                    this.camera.forceUpdate();
+                    camera.forceUpdate();
                     return;
                 }
             }
@@ -224,7 +333,7 @@ export class Game {
                         this.foundations[i].push(cards[0].card, 'up');
     
                         this.#resetDraggingCardsData();
-                        this.camera.forceUpdate();
+                        camera.forceUpdate();
                         return;
                     }
                 }
@@ -241,7 +350,7 @@ export class Game {
             this.$draggingCardsData.cards[i].card.isDragging = false;
         }
 
-        this.camera.forceUpdate();
+        Camera.getInstance().forceUpdate();
         this.$draggingCardsData = null;
     }
 
@@ -259,22 +368,25 @@ export class Game {
     }
 
     mouseEvent(e) {
+        const mouse = Mouse.getInstance();
+        const camera = Camera.getInstance();
+
         if (e.type === 'mousedown') {
-            this.mouse.button = true;
+            mouse.button = true;
         }
 
-        this.mouse.position = {
+        mouse.position = {
             x: e.clientX - e.target.offsetLeft,
             y: e.clientY - e.target.offsetTop
         };
     
-        if (this.mouse.button) {
+        if (mouse.button) {
             if (e.type === 'mousedown') {
-                const { x, y } = this.camera.getBoardPosition(this.mouse.position.x, this.mouse.position.y);
+                const { x, y } = camera.getBoardPosition(mouse.position.x, mouse.position.y);
                 this.#pickTargetAtPoint(x, y);
             } else if (e.type === 'mousemove') {
                 if (this.$draggingCardsData !== null) {
-                    const { x, y } = this.camera.getBoardPosition(this.mouse.position.x, this.mouse.position.y);
+                    const { x, y } = camera.getBoardPosition(mouse.position.x, mouse.position.y);
 
                     const { cards } = this.$draggingCardsData;
                     for (let i = 0; i < cards.length; i++) {
@@ -282,15 +394,15 @@ export class Game {
                         cards[i].card.position.y = y - cards[i].dragOffset.y;
                     }
                     
-                    this.camera.forceUpdate();
+                    camera.forceUpdate();
                     this.$onCardMove(x, y);
                 } else {
-                    const x = this.mouse.position.x - this.mouse.oldPosition.x;
-                    const y = this.mouse.position.y - this.mouse.oldPosition.y;
-                    this.camera.pan({ x, y });
+                    const x = mouse.position.x - mouse.oldPosition.x;
+                    const y = mouse.position.y - mouse.oldPosition.y;
+                    camera.pan({ x, y });
                 }
             } else if (e.type === 'mouseup' && this.$draggingCardsData !== null) {
-                const { x, y } = this.camera.getBoardPosition(this.mouse.position.x, this.mouse.position.y);
+                const { x, y } = camera.getBoardPosition(mouse.position.x, mouse.position.y);
                 this.$onCardDrop(x, y);
                 this.#dropCardsAtPoint(x, y);
             }
@@ -305,11 +417,11 @@ export class Game {
         }
 
         if (e.type === 'mouseup' || e.type === 'mouseout') {
-            this.mouse.button = false;
+            mouse.button = false;
         }
     }
 
     scrollEvent(e) {
-        this.camera.scaleAt({ x: e.clientX, y: e.clientY }, e.deltaY);
+        Camera.getInstance().scaleAt({ x: e.clientX, y: e.clientY }, e.deltaY);
     }
 }
