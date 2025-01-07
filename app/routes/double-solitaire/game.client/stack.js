@@ -63,7 +63,6 @@ export class Stack {
     renderBackground(context) {
         const { x, y, width, height } = this.#box;
         context.strokeStyle = 'gold';
-        console.log({x , y});
         context.strokeRect(x, y, width, height);
     }
 

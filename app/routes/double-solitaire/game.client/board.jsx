@@ -58,13 +58,7 @@ function Board() {
         Mouse.getInstance();
         const camera = Camera.getInstance()
         camera.setContexts(fCanvas.getContext('2d'), bCanvas.getContext('2d'));
-        const game = GameController.getGame();
-        // Might need to consider rotation for multiplayer opponent camera
-        const { startX, startY } = game.getDimensions();
-        camera.position = {
-            x: startX + (container.current.clientWidth/2),
-            y: startY + (container.current.clientHeight/2),
-        };
+        camera.recenter();
 
         new ResizeObserver(resizeCanvas).observe(container.current);
     

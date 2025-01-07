@@ -31,8 +31,6 @@ export class MultiplayerGame extends Game {
         return this.#spectators;
     }
 
-    #inGame = false;
-
     constructor() {
         super();
 
@@ -175,10 +173,10 @@ export class MultiplayerGame extends Game {
                 this.foundations = Array.from({ length: 8 }, (e, i) => Foundations.createFromObject(game.foundations[i]));
 
                 GameController.setIsMultiplayer(true);
-                this.#inGame = true;
+                Camera.getInstance().recenter();
             }
 
-            Camera.getInstance().forceUpdate();
+            // Camera.getInstance().forceUpdate();
             MultiplayerGame.#doEvent('session', data);
         });
     }
@@ -206,13 +204,17 @@ export class MultiplayerGame extends Game {
         if (this.isOpponent()) {
             return {
                 ...rest,
-                ...opponent
+                ...opponent,
+                startX: opponent.startX,
+                startY: opponent.startY
             };
         }
 
         return {
             ...rest,
-            ...owner
+            ...owner,
+            startX: -owner.startX,
+            startY: -owner.startY
         };
     }
 
@@ -323,10 +325,6 @@ export class MultiplayerGame extends Game {
         return MultiplayerGame.#socket.connected;
     }
 
-    isGameConnected() {
-        return this.isServerConnected() && this.#inGame;
-    }
-
     isOwner(userId = null) {
         const id = userId ? userId : MultiplayerGame.#socket.userId;
         return id === (this.#owner?.id ?? null);
@@ -338,7 +336,7 @@ export class MultiplayerGame extends Game {
     }
 
     isSpectator() {
-        if (this.isGameConnected()) {
+        if (this.#spectators) {
             for (const spectator in this.#spectators) {
                 if (MultiplayerGame.#socket.userId === spectator) {
                     return true;
@@ -363,9 +361,7 @@ export class MultiplayerGame extends Game {
                     this.foundations = Array.from({ length: 8 }, (e, i) => Foundations.createFromObject(game.foundations[i]));
 
                     GameController.setIsMultiplayer(true);
-                    this.#inGame = true;
-                    
-                    Camera.getInstance().forceUpdate();
+                    Camera.getInstance().recenter();
                     MultiplayerGame.#doEvent('create-game');
                 }
             } catch (e) {
@@ -408,8 +404,7 @@ export class MultiplayerGame extends Game {
                     this.foundations = Array.from({ length: 8 }, (e, i) => Foundations.createFromObject(game.foundations[i]));
 
                     GameController.setIsMultiplayer(true);
-                    this.#inGame = true;
-                    Camera.getInstance().forceUpdate();
+                    Camera.getInstance().recenter();
                     MultiplayerGame.#doEvent('join-game');
                 }
             } catch (e) {
@@ -428,7 +423,7 @@ export class MultiplayerGame extends Game {
                 console.log('leave-game', { success, events });
                 if (success) {
                     this.cleanGame();
-                    Camera.getInstance().forceUpdate();
+                    Camera.getInstance().recenter();
                     MultiplayerGame.#doEvent('leave-game');
                 }
             } catch (e) {
@@ -502,7 +497,6 @@ export class MultiplayerGame extends Game {
         this.tableau = undefined;
         this.hand = undefined;
         this.foundations = undefined;
-        this.#inGame = false;
         
         GameController.setIsMultiplayer(false);
         Camera.getInstance().rotation = 0;

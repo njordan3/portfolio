@@ -1,3 +1,5 @@
+import { GameController } from "./game-controller";
+
 export class Camera {
     #matrix = [1, 0, 0, 1, 0, 0]; // current view transform
     #zoomInStep = 1.1;
@@ -131,5 +133,17 @@ export class Camera {
             x: this.#rotation.x * (-this.position.x + x) / this.#scale,
             y: this.#rotation.x * (-this.position.y + y) / this.#scale,
         };
+    }
+
+    recenter() {
+        const game = GameController.getGame();
+        const { startX, startY } = game.getDimensions();
+        const { width, height } = this.#foregroundContext.canvas;
+        this.position = {
+            x: startX + (width/2),
+            y: startY + (height/2),
+        };
+
+        this.forceUpdate();
     }
 }
