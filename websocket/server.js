@@ -129,6 +129,15 @@ export default function initWebSocketServer(httpServer) {
 
       return callback(response);
     });
+
+    socket.on('card-pick', ({ x, y }) => {
+      const { sessionId, user } = socket;
+      const { gameState } = user;
+      const game = gameInstances.getGame(gameState?.gameId ?? null);
+      if (game && game.userIsPlaying(sessionId)) {
+        gameState.pickTargetAtPoint(socket, x, y);
+      }
+    });
   
     socket.on('disconnecting', () => {
       // Leave games and remove user sessions
@@ -164,7 +173,6 @@ export default function initWebSocketServer(httpServer) {
       games: gameInstances,
     };
 
-    
     const game = gameInstances.getGame(user.gameState?.gameId ?? null);
     if (game) {
       session.game = game.toGameJSON();

@@ -3,6 +3,9 @@ import { MultiplayerDimensions } from "./dimensions.js";
 export default class Card {
     position = { x: 0, y: 0 };
     #yFlipped = false;
+    
+    // Used to make sure this card gets rendered last so it shows on top
+    isDragging = false;
 
     #suit;
     get suit() {
@@ -35,6 +38,7 @@ export default class Card {
             suit: this.#suit,
             rank: this.#rank,
             yFlipped: this.#yFlipped,
+            isDragging: this.isDragging,
         }
     }
 }

@@ -1,4 +1,4 @@
-import { Ranks, Suits } from '../../../websocket/game/constants';
+import { PlayerType, Ranks, Suits } from '../../../websocket/game/constants';
 import { Dimensions, MultiplayerDimensions } from '../../../websocket/game/dimensions';
 
 export async function action({ request }) {
@@ -13,5 +13,6 @@ export async function action({ request }) {
         },
         ranks: Ranks,
         suits: Suits,
+        playerTypes: PlayerType,
     });
 }

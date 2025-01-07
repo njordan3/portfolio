@@ -18,19 +18,19 @@ export class Mouse {
     }
 
     // Singleton
-    static $instance;
+    static _instance;
 
     constructor() {
-        if (this.$instance) {
+        if (this._instance) {
             throw Error('Multiple mice? That\'s crazy...');
         }
     }
 
     static getInstance() {
-        if (!this.$instance) {
-            this.$instance = new Mouse();
+        if (!this._instance) {
+            this._instance = new Mouse();
         }
 
-        return this.$instance;
+        return this._instance;
     }
 }

@@ -68,7 +68,7 @@ function Board() {
         return () => {
             window.cancelAnimationFrame(animationFrameId.current);
             SingleplayerGame.getInstance().save();
-        }
+        };
     }, []);
 
     useBeforeUnload(() => {

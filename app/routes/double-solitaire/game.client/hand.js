@@ -1,6 +1,7 @@
 import { GameController } from './game-controller';
 import { SingleplayerGame } from './singleplayer-game';
 import { Card, Stack } from './internal';
+import { MultiplayerGame } from './multiplayer-game';
 
 export class Hand extends Stack {
     static dealAmount = 3;
@@ -30,9 +31,9 @@ export class Hand extends Stack {
 
     reset() {
         // Prevents infinite singleplayer initialization
-        const { cardXOffset, handUpX, handUpY } = GameController.isMultiplayer()
-            ? GameController.getGame().getDimensions()
-            : SingleplayerGame.dimensions;
+        const { cardXOffset, handUpX, handUpY } = this._playerType !== null
+            ? MultiplayerGame.getDimensions(this._playerType)
+            : SingleplayerGame.getDimensions();
         let x = handUpX; // Get Multiplayer dimensions
         const indexClamp = (this.up.length > Hand.dealAmount ? this.up.length - Hand.dealAmount : 0);
         for (let i = 0; i < this.up.length; i++) {
@@ -48,8 +49,8 @@ export class Hand extends Stack {
     }
 
     static createFromObject(object) {
-        const { position: { x, y }, width, height, up, down } = object;
-        const hand = new Hand(x, y, width, height);
+        const { position: { x, y }, width, height, up, down, playerType } = object;
+        const hand = new Hand(x, y, width, height, playerType);
         for (let i = 0; i < up.length; i++) {
             const { suit, rank, position, yFlipped } = up[i];
             const card = new Card(suit, rank, yFlipped);
@@ -62,6 +63,8 @@ export class Hand extends Stack {
             card.position = position;
             hand.push(card, 'down');
         }
+
+        hand.reset();
 
         return hand;
     }

@@ -1,7 +1,6 @@
 import { Dimensions, getPlayerTypeDimensions } from "./dimensions.js";
 import Stack from "./stack.js";
 
-
 export default class Hand extends Stack {
     static dealAmount = 3;
 

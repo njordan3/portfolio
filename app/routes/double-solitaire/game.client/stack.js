@@ -1,4 +1,5 @@
 import { GameController } from "./game-controller";
+import { MultiplayerGame } from "./multiplayer-game";
 import { SingleplayerGame } from "./singleplayer-game";
 
 export class Stack {
@@ -7,16 +8,18 @@ export class Stack {
     _position = { x: 0, y: 0 };
     _width = 0;
     _height = 0;
+    _playerType;
 
     // Background render box
     #box = { x: 0, y: 0, width: 0, height: 0 };
 
-    constructor(x, y, width, height) {
+    constructor(x, y, width, height, playerType = null) {
         // Prevents infinite singleplayer initialization
-        const { cardMargin } = GameController.isMultiplayer()
-            ? GameController.getGame().getDimensions()
-            : SingleplayerGame.dimensions;
+        const { cardMargin } = this._playerType !== null
+            ? MultiplayerGame.getDimensions(this._playerType)
+            : SingleplayerGame.getDimensions();
 
+        this._playerType = playerType;
         this._position = { x, y };
         this._width = width;
         this._height = height;

@@ -86,6 +86,7 @@ export default class Stack {
             position: this._position,
             width: this._width,
             height: this._height,
+            playerType: this._playerType,
         };
     }
 }

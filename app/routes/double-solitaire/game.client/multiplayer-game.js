@@ -34,7 +34,7 @@ export class MultiplayerGame extends Game {
     constructor() {
         super();
 
-        if (this.$instance) {
+        if (this._instance) {
             throw Error('Multiplayer Game already initialized');
         }
 
@@ -132,6 +132,24 @@ export class MultiplayerGame extends Game {
             MultiplayerGame.#doEvent('game-start-timer', data);
         });
 
+        MultiplayerGame.#socket.on('player-hand-flip', (data) => {
+            console.log('player-hand-flip', data);
+            const { id } = data;
+            let hand = null;
+            if (this.isOwner(id)) {
+                hand = this.#owner.hand;
+            } else if (this.isOpponent(id)) {
+                hand = this.#opponent.hand;
+            }
+
+            if (hand && !hand.restart() ) {
+                hand.flip();
+            }
+
+            Camera.getInstance().forceUpdate();
+            MultiplayerGame.#doEvent('player-hand-flip', data);
+        });
+
         MultiplayerGame.#socket.on('session', (data) => {
             console.log('session', data);
             const { sessionId, userId, game } = data;
@@ -176,7 +194,6 @@ export class MultiplayerGame extends Game {
                 Camera.getInstance().recenter();
             }
 
-            // Camera.getInstance().forceUpdate();
             MultiplayerGame.#doEvent('session', data);
         });
     }
@@ -192,16 +209,20 @@ export class MultiplayerGame extends Game {
     }
 
     static getInstance() {
-        if (!this.$instance) {
-            this.$instance = new MultiplayerGame();
+        if (!this._instance) {
+            this._instance = new MultiplayerGame();
         }
 
-        return this.$instance;
+        return this._instance;
     }
 
-    getDimensions() {
+    callGetDimensions(playerType = null) {
+        return MultiplayerGame.getDimensions(playerType);
+    }
+
+    static getDimensions(playerType = null) {
         const { owner, opponent, ...rest } = MultiplayerGame.dimensions;
-        if (this.isOpponent()) {
+        if (playerType === Game.playerTypes.OPPONENT) {
             return {
                 ...rest,
                 ...opponent,
@@ -502,15 +523,16 @@ export class MultiplayerGame extends Game {
         Camera.getInstance().rotation = 0;
     }
     
-    $onCardPick(x, y) {
+    _onCardPick(x, y) {
+        console.log(x, y);
         MultiplayerGame.#socket.emit('card-pick', { x, y });
     }
 
-    $onCardMove(x, y) {
+    _onCardMove(x, y) {
         MultiplayerGame.#socket.emit('card-move', { x, y });
     }
 
-    $onCardDrop(x, y) {
+    _onCardDrop(x, y) {
         MultiplayerGame.#socket.emit('card-drop', { x, y });
     }
 }

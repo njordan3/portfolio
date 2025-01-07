@@ -5,7 +5,7 @@ export class SingleplayerGame extends Game {
     constructor() {
         super();
 
-        if (this.$instance) {
+        if (this._instance) {
             throw Error('Singleplayer Game already initialized');
         }
         
@@ -63,14 +63,19 @@ export class SingleplayerGame extends Game {
     }
 
     static getInstance() {
-        if (!this.$instance) {
-            this.$instance = new SingleplayerGame();
+        if (!this._instance) {
+            this._instance = new SingleplayerGame();
         }
 
-        return this.$instance;
+        return this._instance;
     }
     
-    getDimensions() {
+    
+    callGetDimensions(playerType = null) {
+        return SingleplayerGame.getDimensions(playerType);
+    }
+
+    static getDimensions(playerType = null) {
         return {
             ...SingleplayerGame.dimensions,
             startX: -SingleplayerGame.dimensions.startX,

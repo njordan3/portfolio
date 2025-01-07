@@ -30,11 +30,12 @@ export const links = () => [
  */
 export const clientLoader = async () => {
     const response = await fetch('/double-solitaire/settings', { method: 'POST' });
-    const { dimensions, ranks, suits } = await response.json();
+    const { dimensions, ranks, suits, playerTypes } = await response.json();
     Game.dimensions = Object.freeze(dimensions.singleplayer);
     MultiplayerGame.dimensions = Object.freeze(dimensions.multiplayer);
     Game.ranks = Object.freeze(ranks);
     Game.suits = Object.freeze(suits);
+    Game.playerTypes = Object.freeze(playerTypes);
     return Promise.all([ getImage(cardSpriteSheet), getImage(feltTexture) ]);
 };
 

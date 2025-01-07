@@ -1,13 +1,14 @@
 import { GameController } from './game-controller';
 import { SingleplayerGame } from './singleplayer-game';
 import { Game, Card, Stack } from './internal';
+import { MultiplayerGame } from './multiplayer-game';
 
 export class Tableau extends Stack {
     push(card, index = 'down') {
         // Prevents infinite singleplayer initialization
-        const { cardYOffset } = GameController.isMultiplayer()
-            ? GameController.getGame().getDimensions()
-            : SingleplayerGame.dimensions;
+        const { cardYOffset } = this._playerType !== null
+            ? MultiplayerGame.getDimensions(this._playerType)
+            : SingleplayerGame.getDimensions();
         const position = {
             x: this._position.x,
             y: this._position.y
@@ -33,9 +34,9 @@ export class Tableau extends Stack {
      */
     reset() {
         // Prevents infinite singleplayer initialization
-        const { cardHeight, cardYOffset } = GameController.isMultiplayer()
-            ? GameController.getGame().getDimensions()
-            : SingleplayerGame.dimensions;
+        const { cardHeight, cardYOffset } = this._playerType !== null
+            ? MultiplayerGame.getDimensions(this._playerType)
+            : SingleplayerGame.getDimensions();
         const position = {
             x: this._position.x,
             y: this._position.y
@@ -74,8 +75,8 @@ export class Tableau extends Stack {
     }
 
     static createFromObject(object) {
-        const { position: { x, y }, width, height, up, down } = object;
-        const tableau = new Tableau(x, y, width, height);
+        const { position: { x, y }, width, height, up, down, playerType } = object;
+        const tableau = new Tableau(x, y, width, height, playerType);
         for (let j = 0; j < up.length; j++) { // Foundations only have up cards
             const { suit, rank, position, yFlipped } = up[j];
             const card = new Card(suit, rank, yFlipped);

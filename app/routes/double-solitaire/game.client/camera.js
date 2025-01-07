@@ -1,3 +1,4 @@
+import { Game } from "./game";
 import { GameController } from "./game-controller";
 
 export class Camera {
@@ -41,10 +42,10 @@ export class Camera {
     }
 
     // Singleton
-    static $instance;
+    static _instance;
 
     constructor() {
-        if (this.$instance) {
+        if (this._instance) {
             throw Error('Multiple cameras? That\'s crazy...');
         }
 
@@ -52,11 +53,11 @@ export class Camera {
     }
 
     static getInstance() {
-        if (!this.$instance) {
-            this.$instance = new Camera();
+        if (!this._instance) {
+            this._instance = new Camera();
         }
 
-        return this.$instance;
+        return this._instance;
     }
 
     setContexts(fContext, bContext) {
@@ -137,7 +138,12 @@ export class Camera {
 
     recenter() {
         const game = GameController.getGame();
-        const { startX, startY } = game.getDimensions();
+        const isMultiplayer = GameController.isMultiplayer();
+        let playerType = isMultiplayer ? Game.playerTypes.OWNER : null;
+        if (isMultiplayer && game.isOpponent()) {
+            playerType = Game.playerTypes.OPPONENT;
+        }
+        const { startX, startY } = game.callGetDimensions(playerType);
         const { width, height } = this.#foregroundContext.canvas;
         this.position = {
             x: startX + (width/2),

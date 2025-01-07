@@ -18,6 +18,8 @@ export class UserGameState {
     #tableau;        // 7 piles that make up the main table
     #hand;           // Cards in hand
 
+    _draggingCardsData = null;
+
     constructor(gameId) {
         this.#gameId = gameId; 
     }
@@ -72,6 +74,70 @@ export class UserGameState {
 
         for (let i = 0; i < this.#tableau.length; i++) {
             this.#tableau[i].flip();
+        }
+    }
+
+    pickTargetAtPoint(socket, x, y) {
+        if ( this.#hand.isPointIntersected(x, y) ) {
+            if ( !this.#hand.restart() ) {
+                this.#hand.flip();
+            }
+
+            socket.to(this.#gameId).emit('player-hand-flip', { id: socket.user.id });
+            return;
+        }
+
+        // Check Draggable Card hitboxes
+        const topCard = this.#hand.top('up');
+        if (topCard) {
+            if ( topCard.isPointIntersected(x, y) ) {
+                topCard.isDragging = true;
+                this._draggingCardsData = {
+                    stack: this.#hand,
+                    stackIndex: ['hand', 'up'],
+                    cards: [{
+                        index: this.#hand.up.length-1,
+                        card: topCard,
+                        dragOffset: {
+                            x: x - topCard.position.x,
+                            y: y - topCard.position.y
+                        }
+                    }]
+                };
+                return;
+            }
+        }
+
+        for (let i = this.#tableau.length-1; i >= 0; i--) {
+            // Check if coordinates are in Stack hitbox before checking cards
+            if ( this.#tableau[i].isPointIntersected(x, y) ) {
+                const draggingCardsData = {
+                    stack: this.#tableau[i],
+                    stackIndex: ['tableau', i, 'up'],
+                    cards: [],
+                };
+
+                for (let j = this.#tableau[i].up.length-1; j >= 0; j--) {
+                    const { position } = this.#tableau[i].up[j];
+                    draggingCardsData.cards.push({
+                        index: j,
+                        card: this.#tableau[i].up[j],
+                        dragOffset: {
+                            x: x - position.x,
+                            y: y - position.y
+                        }
+                    });
+                    if ( this.#tableau[i].up[j].isPointIntersected(x, y) ) {
+                        for (let j = 0; j < draggingCardsData.cards.length; j++) {
+                            draggingCardsData.cards[j].card.isDragging = true;
+                        }
+                        this._draggingCardsData = draggingCardsData;
+                        return;
+                    }
+                }
+
+                break;
+            }
         }
     }
 

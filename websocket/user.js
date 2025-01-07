@@ -2,25 +2,25 @@ import { randomId, sanitizeString } from "./utils.js";
 
 export default class User {
     gameState;
-    #name = 'Anonymous';
-    #id;
-    #disconnectTimeout;
 
-    constructor() {
-        this.#id = randomId();
+    #name = 'Anonymous';
+    get name() {
+        return this.#name;
+    }
+    set name(name) {
+        const cleanName = sanitizeString(name);
+        this.#name = cleanName ? cleanName.substring(0, 24) : 'Anonymous';
     }
 
+    #id;
     get id() {
         return this.#id;
     }
 
-    get name() {
-        return this.#name;
-    }
+    #disconnectTimeout;
 
-    set name(name) {
-        const cleanName = sanitizeString(name);
-        this.#name = cleanName ? cleanName.substring(0, 24) : 'Anonymous';
+    constructor() {
+        this.#id = randomId();
     }
 
     setConnected(socket, connected) {

@@ -13,18 +13,18 @@ export class Dimensions {
     cardGap = 20;
     cardMargin = 5;
 
-    static $instance;
+    static _instance;
 
     static getInstance() {
-      if (!this.$instance) {
-          this.$instance = new Dimensions();
+      if (!this._instance) {
+          this._instance = new Dimensions();
       }
 
-      return this.$instance;
+      return this._instance;
     }
 
     constructor() {
-        if (!this.$instance) {
+        if (!this._instance) {
             this.calcHeight();
             this.calcFoundation();
 
@@ -102,11 +102,11 @@ export class MultiplayerDimensions extends Dimensions {
     };
 
     static getInstance() {
-        if (!this.$instance) {
-            this.$instance = new MultiplayerDimensions();
+        if (!this._instance) {
+            this._instance = new MultiplayerDimensions();
         }
   
-        return this.$instance;
+        return this._instance;
       }
 
     constructor() {
