@@ -1,7 +1,6 @@
-import { Ranks } from './constants.js';
-import Stack from './stack.js';
+import { Ranks, Stack } from './internal.js';
 
-export default class Foundations extends Stack {
+export class Foundations extends Stack {
     isValidDrop(card) {
         const validEmptyDropRank = Ranks.ACE;
         if (this.up.length <= 0 && this.down.length <= 0 && card.rank === validEmptyDropRank) {

@@ -12,7 +12,7 @@ import HoldButton from '@/components/hold-button';
 import GameSettings from './game-settings';
 import UsernameInput from './username-input';
 import GameUsers from './game-users';
-import { Game } from './game.client/internal';
+import { Card, Game, Hand, Stack, Tableau } from './game.client/internal';
 import CountdownTimer, { links as CountdownTimerLinks } from '@/components/countdown-timer';
 
 export const links = () => [
@@ -31,6 +31,16 @@ export const links = () => [
 export const clientLoader = async () => {
     const response = await fetch('/double-solitaire/settings', { method: 'POST' });
     const { dimensions, ranks, suits, playerTypes } = await response.json();
+
+    Card.width = dimensions.singleplayer.cardWidth;
+    Card.height = dimensions.singleplayer.cardHeight;
+
+    Stack.margin = dimensions.singleplayer.cardMargin;
+
+    Hand.xOffset = dimensions.singleplayer.cardXOffset;
+
+    Tableau.yOffset = dimensions.singleplayer.cardYOffset;
+
     Game.dimensions = Object.freeze(dimensions.singleplayer);
     MultiplayerGame.dimensions = Object.freeze(dimensions.multiplayer);
     Game.ranks = Object.freeze(ranks);

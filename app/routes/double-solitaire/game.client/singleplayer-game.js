@@ -13,9 +13,9 @@ export class SingleplayerGame extends Game {
         if (existingGame) {
             try {
                 const { hand, tableau, foundations } = JSON.parse(existingGame);
-                const { cardWidth, cardHeight, cardGap, handDownX, handDownY, tableauX, tableauY, foundationX, foundationY } = SingleplayerGame.dimensions;
+                const { stackGap, handDownX, handDownY, tableauX, tableauY, foundationX, foundationY } = SingleplayerGame.dimensions;
                 
-                this.hand = new Hand(handDownX, handDownY, cardWidth, cardHeight);
+                this.hand = new Hand(handDownX, handDownY, Card.width, Card.height);
                 for (let i = 0; i < hand.up.length; i++) {
                     const { suit, rank } = hand.up[i];
                     this.hand.push(new Card(suit, rank), 'up');
@@ -27,9 +27,9 @@ export class SingleplayerGame extends Game {
                 this.hand.reset();
 
                 this.tableau = Array.from({ length: 7 }, (e, i) => {
-                    const x = tableauX + ((cardWidth + cardGap) * i);
+                    const x = tableauX + ((Card.width + stackGap) * i);
                     const y = tableauY;
-                    const newTableau = new Tableau(x, y, cardWidth, cardHeight);
+                    const newTableau = new Tableau(x, y, Card.width, Card.height);
                     for (let j = 0; j < tableau[i].up.length; j++) {
                         const { suit, rank } = tableau[i].up[j];
                         newTableau.push(new Card(suit, rank), 'up');
@@ -43,9 +43,9 @@ export class SingleplayerGame extends Game {
                 });
                 
                 this.foundations = Array.from({ length: 4 }, (e, i) => {
-                    const x = foundationX + ((cardWidth + cardGap) * i);
+                    const x = foundationX + ((Card.width + stackGap) * i);
                     const y = foundationY;
-                    const newFoundation = new Foundations(x, y, cardWidth, cardHeight);
+                    const newFoundation = new Foundations(x, y, Card.width, Card.height);
                     for (let j = 0; j < foundations[i].up.length; j++) { // Foundations only have up cards
                         const { suit, rank } = foundations[i].up[j];
                         newFoundation.push(new Card(suit, rank), 'up');
@@ -84,9 +84,9 @@ export class SingleplayerGame extends Game {
     }
 
     reset() {
-        const { cardWidth, cardHeight, cardGap, handDownX, handDownY, tableauX, tableauY, foundationX, foundationY } = SingleplayerGame.dimensions;
+        const { stackGap, handDownX, handDownY, tableauX, tableauY, foundationX, foundationY } = SingleplayerGame.dimensions;
 
-        this.hand = new Hand(handDownX, handDownY, cardWidth, cardHeight);
+        this.hand = new Hand(handDownX, handDownY, Card.width, Card.height);
 
         for (let suit = 0; suit < 4; suit++) {
             for (let rank = 0; rank < 13; rank++) {
@@ -95,14 +95,14 @@ export class SingleplayerGame extends Game {
         }
 
         this.tableau = Array.from({ length: 7 }, (e, i) => {
-            const x = tableauX + ((cardWidth + cardGap) * i);
+            const x = tableauX + ((Card.width + stackGap) * i);
             const y = tableauY;
-            return new Tableau(x, y, cardWidth, cardHeight);
+            return new Tableau(x, y, Card.width, Card.height);
         });
         this.foundations = Array.from({ length: 4 }, (e, i) => {
-            const x = foundationX + ((cardWidth + cardGap) * i);
+            const x = foundationX + ((Card.width + stackGap) * i);
             const y = foundationY;
-            return new Foundations(x, y, cardWidth, cardHeight);
+            return new Foundations(x, y, Card.width, Card.height);
         });
     }
 

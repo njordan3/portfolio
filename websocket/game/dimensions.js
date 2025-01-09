@@ -1,4 +1,4 @@
-import { PlayerType } from "./constants.js";
+import { PlayerType } from "./internal.js";
 
 export class Dimensions {
     boardWidth = 2000;
@@ -8,9 +8,9 @@ export class Dimensions {
     cardXOffset = 25;
 
     cardHeight = 117;
-    cardYOffset = 40;
+    cardYOffset = 35;
 
-    cardGap = 20;
+    stackGap = 20;
     cardMargin = 5;
 
     static _instance;
@@ -24,22 +24,24 @@ export class Dimensions {
     }
 
     constructor() {
-        if (!this._instance) {
-            this.calcHeight();
-            this.calcFoundation();
-
-            this.tableauX = this.centerX - (this.cardWidth * 3.5) - (this.cardGap * 3);
-            this.tableauY = this.foundationY + this.cardHeight + this.cardGap;
-
-            this.handDownX = this.tableauX - (this.cardWidth * 2) - (this.cardGap * 2) - (this.cardXOffset * 2);
-            this.handDownY = this.tableauY + this.cardHeight + this.cardGap;
-
-            this.handUpX = this.handDownX + this.cardWidth + this.cardGap;
-            this.handUpY = this.handDownY;
-
-            this.startX = this.centerX;
-            this.startY = this.tableauY;
+        if (this._instance) {
+            throw Error('Dimensions already initialized');
         }
+
+        this.calcHeight();
+        this.calcFoundation();
+
+        this.tableauX = this.centerX - (this.cardWidth * 3.5) - (this.stackGap * 3);
+        this.tableauY = this.foundationY + this.cardHeight + this.stackGap;
+
+        this.handDownX = this.tableauX - (this.cardWidth * 2) - (this.stackGap * 2) - (this.cardXOffset * 2);
+        this.handDownY = this.tableauY + this.cardHeight + this.stackGap;
+
+        this.handUpX = this.handDownX + this.cardWidth + this.stackGap;
+        this.handUpY = this.handDownY;
+
+        this.startX = this.centerX;
+        this.startY = this.tableauY;
     }
 
     calcHeight() {
@@ -48,7 +50,7 @@ export class Dimensions {
     }
     
     calcFoundation() {
-        this.foundationX = this.centerX - (this.cardWidth * 2) - (this.cardGap * 1.5);
+        this.foundationX = this.centerX - (this.cardWidth * 2) - (this.stackGap * 1.5);
         this.foundationY = 1.5 * this.cardHeight;
     }
 
@@ -58,7 +60,7 @@ export class Dimensions {
             boardHeight: this.boardHeight,
             cardWidth: this.cardWidth,
             cardHeight: this.cardHeight,
-            cardGap: this.cardGap,
+            stackGap: this.stackGap,
             cardMargin: this.cardMargin,
             cardXOffset: this.cardXOffset,
             cardYOffset: this.cardYOffset,
@@ -112,6 +114,10 @@ export class MultiplayerDimensions extends Dimensions {
     constructor() {
         super();
 
+        if (this._instance) {
+            throw Error('MultiplayerDimensions already initialized');
+        }
+        
         this.owner = {
             tableauX: this.tableauX,
             tableauY: this.tableauY,
@@ -123,13 +129,13 @@ export class MultiplayerDimensions extends Dimensions {
             startY: this.startY,
         };
 
-        const tableauX = this.centerX - (this.cardWidth * 3.5) - (this.cardGap * 3);
-        const tableauY = this.foundationY - this.cardHeight - this.cardGap;
+        const tableauX = this.centerX - (this.cardWidth * 3.5) - (this.stackGap * 3);
+        const tableauY = this.foundationY - this.cardHeight - this.stackGap;
 
-        const handDownX = tableauX + (this.cardWidth * 8) + (this.cardGap * 8) + (this.cardXOffset * 2);
-        const handDownY = tableauY - this.cardHeight - this.cardGap;
+        const handDownX = tableauX + (this.cardWidth * 8) + (this.stackGap * 8) + (this.cardXOffset * 2);
+        const handDownY = tableauY - this.cardHeight - this.stackGap;
 
-        const handUpX = handDownX - this.cardWidth - this.cardGap;
+        const handUpX = handDownX - this.cardWidth - this.stackGap;
         const handUpY = handDownY;
 
         const startX = this.centerX;
@@ -146,13 +152,14 @@ export class MultiplayerDimensions extends Dimensions {
             startY,
         };
     }
+
     calcHeight() {
         this.boardHeight = 1500;
         this.centerY = this.boardHeight/2;
     }
 
     calcFoundation() {
-        this.foundationX = this.centerX - (this.cardWidth * 4) - (this.cardGap * 3);
+        this.foundationX = this.centerX - (this.cardWidth * 4) - (this.stackGap * 3);
         this.foundationY = this.centerY - (this.cardHeight/2);
     }
 
@@ -168,7 +175,7 @@ export class MultiplayerDimensions extends Dimensions {
             startY,
             ...rest
         } = super.toJSON();
-
+        
         return {
             ...rest,
             owner: {
@@ -187,7 +194,20 @@ export class MultiplayerDimensions extends Dimensions {
 }
 
 export function getPlayerTypeDimensions(playerType) {
-    const dimensions = MultiplayerDimensions.getInstance();
-    // If cards are being dealt and we are not the owner, then assume we are opponent and not spectator.
-    return playerType === PlayerType.OWNER ? dimensions.owner : dimensions.opponent;
+    const { owner, opponent, ...rest } = MultiplayerDimensions.getInstance().toJSON();
+    if (playerType === PlayerType.OPPONENT) {
+        return {
+            ...rest,
+            ...opponent,
+            startX: opponent.startX,
+            startY: opponent.startY
+        };
+    }
+
+    return {
+        ...rest,
+        ...owner,
+        startX: -owner.startX,
+        startY: -owner.startY
+    };
 }

@@ -1,25 +1,23 @@
-import { Ranks, Suits } from "./constants.js";
-import { MultiplayerDimensions } from "./dimensions.js";
-import Stack from "./stack.js";
+import { PlayerType, Ranks, Suits, Stack, Card, MultiplayerDimensions} from "./internal.js";
 
-export default class Tableau extends Stack {
+export class Tableau extends Stack {
+    static yOffset;
+
     push(card, index = 'down') {
-        const { cardYOffset } = MultiplayerDimensions.getInstance();
-        const position = {
-            x: this._position.x,
-            y: this._position.y
-        };
+        const position = { ...this._position };
 
         if (index === 'up') {
             const topCard = this.top('up');
 
             if (topCard) {
                 const sign = card.yFlipped ? -1 : 1;
-                position.y = topCard.position.y + (sign * cardYOffset);
-                this._height += cardYOffset; // Grow hitbox height
+                position.y = topCard.position.y + (sign * Tableau.yOffset);
+                if (this._playerType === PlayerType.OPPONENT) {
+                    this._position.y -= Tableau.yOffset;
+                }
+                this._height += Tableau.yOffset; // Grow hitbox height
             }
         }
-        
         card.position = position;
 
         this[index].push(card);
@@ -29,22 +27,24 @@ export default class Tableau extends Stack {
      * Gets called when dragged cards are dropped
      */
     reset() {
-        const { cardHeight, cardYOffset } = MultiplayerDimensions.getInstance();
-        const position = {
-            x: this._position.x,
-            y: this._position.y
-        };
+        console.log('tableau reset')
+        this._position = { ...this._originalPosition };
+        const position = { ...this._originalPosition };
 
         for (let i = 0; i < this.up.length; i++) {
             this.up[i].position.x = position.x;
             const sign = this.up[i].yFlipped ? -1 : 1;
-            this.up[i].position.y = position.y + (i * cardYOffset);
+            this.up[i].position.y = position.y + (i * sign * Tableau.yOffset);
         }
 
         // Set hitbox height
-        let height = cardHeight;
+        let height = Card.height;
+        console.log(Card.height, Tableau.yOffset);
         if (this.up.length > 0) {
-            height += ((this.up.length-1) * cardYOffset);
+            const yDelta = ((this.up.length-1) * Tableau.yOffset);
+            height += yDelta;
+            const sign = this._playerType === PlayerType.OPPONENT ? -1 : 1;
+            this._position.y += (sign * yDelta);
         }
         this._height = height;
 
@@ -67,3 +67,5 @@ export default class Tableau extends Stack {
         return false;
     }
 }
+
+Tableau.yOffset = MultiplayerDimensions.getInstance().cardYOffset;

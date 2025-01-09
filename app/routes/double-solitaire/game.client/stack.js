@@ -1,46 +1,33 @@
-import { GameController } from "./game-controller";
-import { MultiplayerGame } from "./multiplayer-game";
-import { SingleplayerGame } from "./singleplayer-game";
+import { Card } from "./card";
 
 export class Stack {
+    static margin = 0;
+
     up = [];
     down = [];
+    originalPosition = { x: 0, y: 0 };  // Store original position for resets
     _position = { x: 0, y: 0 };
+    get position() {
+        return this._position;
+    }
     _width = 0;
     _height = 0;
     _playerType;
-
+    
     // Background render box
-    #box = { x: 0, y: 0, width: 0, height: 0 };
+    #box;
 
     constructor(x, y, width, height, playerType = null) {
-        // Prevents infinite singleplayer initialization
-        const { cardMargin } = this._playerType !== null
-            ? MultiplayerGame.getDimensions(this._playerType)
-            : SingleplayerGame.getDimensions();
-
         this._playerType = playerType;
+        this.originalPosition = { x, y };
         this._position = { x, y };
         this._width = width;
         this._height = height;
-
-        x -= cardMargin;
-        y -= cardMargin;
-        width += (2*cardMargin);
-        height += (2*cardMargin);
-        this.#box = { x, y, width, height };
-    }
-
-    get position() {
-        return this._position;
     }
 
     push(card, index = 'down') {
         // We don't want reference to stack position object        
-        card.position = {
-            x: this._position.x,
-            y: this._position.y
-        };
+        card.position = { ...this._position };
 
         this[index].push(card);
     }
@@ -64,9 +51,17 @@ export class Stack {
     reset() {}
 
     renderBackground(context) {
-        const { x, y, width, height } = this.#box;
+        const { x, y } = this.originalPosition;
+        if (!this.#box) {
+            this.#box = {
+                x: x - Stack.margin,
+                y: y - Stack.margin,
+                width: Card.width + (2*Stack.margin),
+                height: Card.height + (2*Stack.margin)
+            };
+        }
         context.strokeStyle = 'gold';
-        context.strokeRect(x, y, width, height);
+        context.strokeRect(this.#box.x, this.#box.y, this.#box.width, this.#box.height);
     }
 
     isValidDrop() {

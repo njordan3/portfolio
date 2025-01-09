@@ -1,8 +1,14 @@
-import { MultiplayerDimensions } from "./dimensions.js";
+import { MultiplayerDimensions } from "./internal.js";
 
-export default class Card {
+export class Card {
+    static width;
+    static height;
+
     position = { x: 0, y: 0 };
     #yFlipped = false;
+    get yFlipped() {
+        return this.#yFlipped;
+    }
     
     // Used to make sure this card gets rendered last so it shows on top
     isDragging = false;
@@ -23,12 +29,11 @@ export default class Card {
     }
 
     isPointIntersected(x, y) {
-        const { cardWidth, cardHeight } = MultiplayerDimensions.getInstance();
         const { position } = this;
-        
+        console.log(position, Card.width, Card.height);
         return (
-            x >= position.x && x <= position.x + cardWidth &&
-            y >= position.y && y <= position.y + cardHeight
+            x >= position.x && x <= position.x + Card.width &&
+            y >= position.y && y <= position.y + Card.height
         );
     }
 
@@ -42,3 +47,6 @@ export default class Card {
         }
     }
 }
+
+Card.width = MultiplayerDimensions.getInstance().cardWidth;
+Card.height = MultiplayerDimensions.getInstance().cardHeight;

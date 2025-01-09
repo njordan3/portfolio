@@ -1,37 +1,26 @@
-import { MultiplayerDimensions } from "./dimensions.js";
-
-export default class Stack {
+export class Stack {
     up = [];
     down = [];
+    _originalPosition = { x: 0, y: 0 }; // Store original position for resets
     _position = { x: 0, y: 0 };
+    get position() {
+        return this._position;
+    }
     _width = 0;
     _height = 0;
     _playerType;
 
     constructor(x, y, width, height, playerType) {
-        const { cardMargin } = MultiplayerDimensions.getInstance();
         this._playerType = playerType;
-
+        this._originalPosition = { x, y };
         this._position = { x, y };
         this._width = width;
         this._height = height;
-
-        x -= cardMargin;
-        y -= cardMargin;
-        width += (2*cardMargin);
-        height += (2*cardMargin);
-    }
-
-    get position() {
-        return this._position;
     }
 
     push(card, index = 'down') {
         // We don't want reference to stack position object
-        card.position = {
-            x: this._position.x,
-            y: this._position.y
-        };
+        card.position = { ...this._position };
 
         this[index].push(card);
     }
@@ -81,9 +70,10 @@ export default class Stack {
         }
 
         return {
-            up: this.up,
-            down: this.down,
+            up,
+            down,
             position: this._position,
+            originalPosition: this._originalPosition,
             width: this._width,
             height: this._height,
             playerType: this._playerType,

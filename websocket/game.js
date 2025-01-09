@@ -1,6 +1,4 @@
-import { PlayerType } from './game/constants.js';
-import { MultiplayerDimensions } from './game/dimensions.js';
-import Foundations from './game/foundations.js';
+import { PlayerType, MultiplayerDimensions, Foundations, Card } from './game/internal.js';
 import { UserGameState } from './user-game-state.js';
 import UserSessions from './user-sessions.js';
 import { sanitizeString } from './utils.js';
@@ -32,12 +30,12 @@ export default class Game {
         this.name = cleanName ? cleanName.substring(0, 24) : 'Anonymous Game';
         this.#owner = socket.sessionId;
 
-        const { cardWidth, cardHeight, cardGap, foundationX, foundationY } = MultiplayerDimensions.getInstance();
+        const { stackGap, foundationX, foundationY } = MultiplayerDimensions.getInstance();
 
         this.#foundations = Array.from({ length: 8 }, (e, i) => {
-            const x = foundationX + ((cardWidth + cardGap) * i);
+            const x = foundationX + ((Card.width + stackGap) * i);
             const y = foundationY;
-            return new Foundations(x, y, cardWidth, cardHeight);
+            return new Foundations(x, y, Card.width, Card.height);
         });
 
         socket.user.gameState = new UserGameState(this.#id);
@@ -47,6 +45,50 @@ export default class Game {
 
     get id() {
         return this.#id;
+    }
+
+    dropCardsAtPoint(socket, x, y) {
+        const { sessionId, user } = socket;
+        const { gameState } = user;
+        if (this.userIsPlaying(sessionId) && gameState.draggingCardsData) {
+
+            // Try dropping to user tableau. If dropped then return early
+            if (gameState.dropCardsAtPoint(socket, x, y)) {
+                return;
+            }
+
+            const { stack, cards } = gameState.draggingCardsData;
+
+            // Foundations will only take a single dragged card
+            if (cards.length === 1) {
+                for (let i = this.#foundations.length-1; i >= 0; i--) {
+                    if ( this.#foundations[i].isPointIntersected(x, y) ) {
+                        console.log(socket.user.id, 'foundations intersected');
+                        if ( this.#foundations[i].isValidDrop(cards[0].card) ) {
+                            stack.up.pop(); // Dragged cards will always be from up
+                            this.#foundations[i].push(cards[0].card, 'up');
+
+                            socket.to(this.#id).emit('player-card-drop', {
+                                id: socket.user.id,
+                                targetStackIndex: ['foundations', i],
+                                draggingCardsData: gameState.draggingCardsJSON()
+                            });
+        
+                            console.log(socket.user.id, 'foundations hit');
+                            gameState.resetDraggingCardsData(socket);
+                            return;
+                        }
+
+                        break;
+                    }
+                }
+            }
+
+            console.log(socket.user.id, 'miss');
+            socket.to(this.#id).emit('player-card-drop', { id: socket.user.id });
+            gameState.resetDraggingCardsData(socket);
+        }
+        console.log(socket.user.id, this.userIsPlaying(sessionId), !!gameState.draggingCardsData);
     }
 
     join(socket) {
@@ -170,6 +212,11 @@ export default class Game {
         if (opponent) {
             opponent = opponent.toGameJSON();
         }
+
+        const foundations = [];
+        for (let i = 0; i < this.#foundations.length; i++) {
+            foundations.push(this.#foundations[i].toJSON());
+        }
         
         return {
             name: this.name,
@@ -177,7 +224,7 @@ export default class Game {
             opponent,
             spectators: spectators,
             started: this.started,
-            foundations: this.#foundations
+            foundations
         };
     }
 

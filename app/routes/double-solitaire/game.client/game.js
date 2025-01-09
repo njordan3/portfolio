@@ -1,4 +1,4 @@
-import { Camera, Hand, Mouse } from './internal'
+import { Camera, Card, Hand, Mouse } from './internal'
 import cardSpriteSheet from '@images/decksprite.png';
 import felt from '@images/tabletopfelt.jpg';
 import { getImage } from '@/utils/images';
@@ -45,7 +45,7 @@ export class Game {
         boardHeight: 0,
         cardWidth: 0,
         cardHeight: 0,
-        cardGap: 0,
+        stackGap: 0,
         cardMargin: 0,
         cardXOffset: 0,
         cardYOffset: 0,
@@ -78,7 +78,6 @@ export class Game {
             return Game.#assetPromise;
         }
 
-        const { cardWidth, cardHeight } = Game.dimensions;
         return Game.#assetPromise = new Promise(async (resolve) => {
             const [spriteSheet, boardTexture] = await Promise.all([getImage(cardSpriteSheet), getImage(felt)]);
             Game._cardSpriteSheet = spriteSheet;
@@ -88,30 +87,30 @@ export class Game {
             for (let suit = 0; suit < 4; suit++) {
                 for (let rank = 0; rank < 13; rank++) {
                     {
-                        const canvas = new OffscreenCanvas(cardWidth, cardHeight);
+                        const canvas = new OffscreenCanvas(Card.width, Card.height);
                         const context = canvas.getContext('2d', { alpha: false });
                         context.drawImage(
                             Game._cardSpriteSheet,
-                            rank * cardWidth, suit * cardHeight,
-                            cardWidth, cardHeight,
+                            rank * Card.width, suit * Card.height,
+                            Card.width, Card.height,
                             0, 0,
-                            cardWidth, cardHeight,
+                            Card.width, Card.height,
                         );
                         context.save();
                         Game._cardFrontImages.push(context);
                     }
 
                     {
-                        const canvas = new OffscreenCanvas(cardWidth, cardHeight);
+                        const canvas = new OffscreenCanvas(Card.width, Card.height);
                         const context = canvas.getContext('2d', { alpha: false });
-                        context.translate(cardWidth, cardHeight);
+                        context.translate(Card.width, Card.height);
                         context.rotate(Math.PI);
                         context.drawImage(
                             Game._cardSpriteSheet,
-                            rank * cardWidth, suit * cardHeight,
-                            cardWidth, cardHeight,
+                            rank * Card.width, suit * Card.height,
+                            Card.width, Card.height,
                             0, 0,
-                            cardWidth, cardHeight,
+                            Card.width, Card.height,
                         );
                         context.save();
 
@@ -121,14 +120,14 @@ export class Game {
                 }
             }
     
-            const canvas = new OffscreenCanvas(cardWidth, cardHeight);
+            const canvas = new OffscreenCanvas(Card.width, Card.height);
             const context = canvas.getContext('2d', { alpha: false });
             context.drawImage(
                 Game._cardSpriteSheet,
-                0, 4 * cardHeight,
-                cardWidth, cardHeight,
+                0, 4 * Card.height,
+                Card.width, Card.height,
                 0, 0,
-                cardWidth, cardHeight,
+                Card.width, Card.height,
             );
             context.save();
     
@@ -172,7 +171,8 @@ export class Game {
         
         for (let i = 0; i < tableau.length; i++) {
             if (tableau[i].down.length > 0) {
-                foreground.drawImage(Game.cardBackImage.canvas, tableau[i].position.x, tableau[i].position.y);
+                const downCard = tableau[i].down[0];
+                foreground.drawImage(Game.cardBackImage.canvas, downCard.position.x, downCard.position.y);
             }
 
             for (let j = 0; j < tableau[i].up.length; j++) {
@@ -225,7 +225,7 @@ export class Game {
 
     deal() {}
 
-    _onCardPick(x, y) { console.log('asd')}
+    _onCardPick(x, y) {}
 
     _onCardMove(x, y) {}
 
@@ -358,18 +358,33 @@ export class Game {
         this._draggingCardsData = null;
     }
 
-    #getCardAtIndex(index) {
+    _getObjectAtIndex(index, player = null) {
+        const source = (player && index[0] !== 'foundations') ? player : this;
         if (index !== null && index.length > 0) {
-            let card = this[index[0]];
+            let object = source[index[0]];
             for (let i = 1; i < index.length; i++) {
-                card = card[index[i]];
+                object = object[index[i]];
             }
 
-            return card;
+            return object;
         }
 
         return null;
     }
+
+    // _getStackAtIndex(index, player = null) {
+    //     const source = player ? player : this;
+    //     if (index !== null && index.length > 0) {
+    //         let stack = source[index[0]];
+    //         for (let i = 1; i < index.length; i++) {
+    //             stack = stack[index[i]];
+    //         }
+
+    //         return stack;
+    //     }
+
+    //     return null;
+    // }
 
     mouseEvent(e) {
         const mouse = Mouse.getInstance();

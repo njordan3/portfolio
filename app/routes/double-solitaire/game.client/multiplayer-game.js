@@ -150,10 +150,52 @@ export class MultiplayerGame extends Game {
             MultiplayerGame.#doEvent('player-hand-flip', data);
         });
 
+        MultiplayerGame.#socket.on('player-card-drop', (data) => {
+            console.log('player-card-drop', data);
+            const { id, targetStackIndex, draggingCardsData } = data;
+            if (targetStackIndex && draggingCardsData && !this.isSpectator(id)) {
+                const { stackIndex, cards } = draggingCardsData;
+                let targetStack = null;
+                let sourceStack = null;
+                const isOwner = this.isOwner(id);
+
+                if (isOwner) {
+                    targetStack = this._getObjectAtIndex(targetStackIndex, this.#owner);
+                    sourceStack = this._getObjectAtIndex(stackIndex, this.#owner);
+                } else {
+                    targetStack = this._getObjectAtIndex(targetStackIndex, this.#opponent);
+                    sourceStack = this._getObjectAtIndex(stackIndex, this.#opponent);
+                }
+
+                if (targetStack && sourceStack) {
+                    for (let i = cards.length-1; i >= 0; i--) {
+                        const index = [...stackIndex, 'up', cards[i].index];
+                        const card = isOwner ? this._getObjectAtIndex(index, this.#owner) : this._getObjectAtIndex(index, this.#opponent);
+                        if (!card) {
+                            // fetch data from server?
+                            break;
+                        }
+
+                        targetStack.push(card, 'up');
+                    }
+
+                    for (let i = 0; i < cards.length; i++) {
+                        sourceStack.up.pop();
+                    }
+                    
+                    sourceStack.reset();
+                }
+                
+                // this.#resetDraggingCardsData();
+            }
+
+            Camera.getInstance().forceUpdate();
+            MultiplayerGame.#doEvent('player-card-drop', data);
+        });
+
         MultiplayerGame.#socket.on('session', (data) => {
             console.log('session', data);
             const { sessionId, userId, game } = data;
-            
             MultiplayerGame.#socket.auth = { sessionId };
             localStorage.setItem('sessionId', sessionId);
             MultiplayerGame.#socket.userId = userId;
@@ -189,7 +231,6 @@ export class MultiplayerGame extends Game {
                 }
                 
                 this.foundations = Array.from({ length: 8 }, (e, i) => Foundations.createFromObject(game.foundations[i]));
-
                 GameController.setIsMultiplayer(true);
                 Camera.getInstance().recenter();
             }
@@ -280,7 +321,8 @@ export class MultiplayerGame extends Game {
             
             for (let j = 0; j < tableau.length; j++) {
                 if (tableau[j].down.length > 0) {
-                    foreground.drawImage(Game.cardBackImage.canvas, tableau[j].position.x, tableau[j].position.y);
+                    const downCard = tableau[j].down[0];
+                    foreground.drawImage(Game.cardBackImage.canvas, downCard.position.x, downCard.position.y);
                 }
     
                 for (let k = 0; k < tableau[j].up.length; k++) {
@@ -524,7 +566,7 @@ export class MultiplayerGame extends Game {
     }
     
     _onCardPick(x, y) {
-        console.log(x, y);
+        console.log('pick', x, y);
         MultiplayerGame.#socket.emit('card-pick', { x, y });
     }
 
@@ -533,6 +575,7 @@ export class MultiplayerGame extends Game {
     }
 
     _onCardDrop(x, y) {
+        console.log('drop', x, y);
         MultiplayerGame.#socket.emit('card-drop', { x, y });
     }
 }

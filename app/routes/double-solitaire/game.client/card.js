@@ -1,6 +1,9 @@
 import { Game } from "./internal";
 
 export class Card {
+    static width;
+    static height;
+    
     position = { x: 0, y: 0 };
     #yFlipped = false;
     get yFlipped() {
