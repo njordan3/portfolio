@@ -151,6 +151,15 @@ export class Game {
         const { foreground } = camera.contexts;
         const { tableau, foundations, hand } = this;
 
+        // Render only top cards
+        for (let i = 0; i < foundations.length; i++) {
+            const topCard = foundations[i].top('up');
+
+            if (topCard) {
+                topCard.draw(foreground);
+            }
+        }
+
         if (hand.top('down')) {
             foreground.drawImage(Game.cardBackImage.canvas, hand.position.x, hand.position.y);
         }
@@ -183,15 +192,6 @@ export class Game {
                 }
 
                 tableau[i].up[j].draw(foreground);
-            }
-        }
-
-        // Render only top cards
-        for (let i = 0; i < foundations.length; i++) {
-            const topCard = foundations[i].top('up');
-
-            if (topCard) {
-                topCard.draw(foreground);
             }
         }
 
@@ -311,7 +311,6 @@ export class Game {
      */
     #dropCardsAtPoint(x, y) {
         const { stack, cards } = this._draggingCardsData;
-        const camera = Camera.getInstance();
 
         for (let i = this.tableau.length-1; i >= 0; i--) {
             if ( this.tableau[i].isPointIntersected(x, y) ) {
@@ -321,8 +320,7 @@ export class Game {
                         this.tableau[i].push(cards[j].card, 'up');
                     }
                     
-                    this.#resetDraggingCardsData();
-                    camera.forceUpdate();
+                    this._resetDraggingCardsData();
                     return;
                 }
             }
@@ -336,19 +334,18 @@ export class Game {
                         stack.up.pop(); // Dragged cards will always be from up
                         this.foundations[i].push(cards[0].card, 'up');
     
-                        this.#resetDraggingCardsData();
-                        camera.forceUpdate();
+                        this._resetDraggingCardsData();
                         return;
                     }
                 }
             }
         }
         
-        this.#resetDraggingCardsData();
+        this._resetDraggingCardsData();
         return;
     }
 
-    #resetDraggingCardsData() {
+    _resetDraggingCardsData() {
         this._draggingCardsData.stack.reset();
         for (let i = 0; i < this._draggingCardsData.cards.length; i++) {
             this._draggingCardsData.cards[i].card.isDragging = false;
@@ -398,6 +395,7 @@ export class Game {
             x: e.clientX - e.target.offsetLeft,
             y: e.clientY - e.target.offsetTop
         };
+
     
         if (mouse.button) {
             if (e.type === 'mousedown') {

@@ -30,7 +30,6 @@ export class Card {
 
     isPointIntersected(x, y) {
         const { position } = this;
-        console.log(position, Card.width, Card.height);
         return (
             x >= position.x && x <= position.x + Card.width &&
             y >= position.y && y <= position.y + Card.height

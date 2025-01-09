@@ -21,7 +21,7 @@ export class Stack {
     push(card, index = 'down') {
         // We don't want reference to stack position object
         card.position = { ...this._position };
-
+        
         this[index].push(card);
     }
 

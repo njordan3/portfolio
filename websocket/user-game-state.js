@@ -26,8 +26,6 @@ export class UserGameState {
     resetCards(playerType) {
         const { stackGap, handDownX, handDownY, tableauX, tableauY } = getPlayerTypeDimensions(playerType);
         const isOpponent = playerType === PlayerType.OPPONENT;
-        
-        console.log(playerType, handDownX, handDownY);
 
         this.#hand = new Hand(handDownX, handDownY, Card.width, Card.height, playerType);
         for (let suit = 0; suit < 4; suit++) {
@@ -82,7 +80,6 @@ export class UserGameState {
                 this.#hand.flip();
             }
 
-            console.log(socket.user.id, 'hand down picked');
             socket.to(this.#gameId).emit('player-hand-flip', { id: socket.user.id });
             return;
         }
@@ -103,7 +100,7 @@ export class UserGameState {
                     }
                 }]
             };
-            console.log(socket.user.id, 'hand up picked');
+
             socket.to(this.#gameId).emit('player-card-drag-start', { id: socket.user.id, draggingCardsData: this.draggingCardsJSON() });
             return;
         }
@@ -133,7 +130,6 @@ export class UserGameState {
                         }
                         this._draggingCardsData = draggingCardsData;
                         
-                        console.log(socket.user.id, 'tableau up picked');
                         socket.to(this.#gameId).emit('player-card-drag-start', { id: socket.user.id, draggingCardsData: this.draggingCardsJSON() });
                         return;
                     }
@@ -141,6 +137,26 @@ export class UserGameState {
 
                 break;
             }
+        }
+    }
+
+    #cardMoveTimeout;
+    dragCards(socket, x, y) {
+        if (!this.#cardMoveTimeout) {
+            if (this._draggingCardsData !== null) {
+
+                const { cards } = this._draggingCardsData;
+                for (let i = 0; i < cards.length; i++) {
+                    cards[i].card.position.x = x - cards[i].dragOffset.x;
+                    cards[i].card.position.y = y - cards[i].dragOffset.y;
+                }
+    
+                socket.to(this.#gameId).emit('player-card-drag', { id: socket.user.id, position: { x, y } });
+            }
+
+            this.#cardMoveTimeout = setTimeout(() => {
+                this.#cardMoveTimeout = undefined;
+            }, 41); // ~24 updates/s
         }
     }
 
@@ -155,13 +171,13 @@ export class UserGameState {
                         this.#tableau[i].push(cards[j].card, 'up');
                     }
 
-                    console.log(socket.user.id, 'tableau hit');
+                    // Deliver dragging cards data one more time just in case the user doesn't have it
                     socket.to(this.#gameId).emit('player-card-drop', {
                         id: socket.user.id,
                         targetStackIndex: ['tableau', i],
                         draggingCardsData: this.draggingCardsJSON()
                     });
-                    this.resetDraggingCardsData(socket);
+                    this.resetDraggingCardsData();
                     return true;
                 }
             }
@@ -170,7 +186,7 @@ export class UserGameState {
         return false;
     }
 
-    resetDraggingCardsData(socket) {
+    resetDraggingCardsData() {
         this._draggingCardsData.stack.reset();
         for (let i = 0; i < this._draggingCardsData.cards.length; i++) {
             this._draggingCardsData.cards[i].card.isDragging = false;

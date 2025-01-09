@@ -29,8 +29,6 @@ export class Tableau extends Stack {
      * Gets called when dragged cards are dropped
      */
     reset() {
-        console.log('tableau reset')
-            
         this._position = { ...this.originalPosition };
         const position = { ...this.originalPosition };
         

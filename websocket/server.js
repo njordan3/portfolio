@@ -135,8 +135,16 @@ export default function initWebSocketServer(httpServer) {
       const { gameState } = user;
       const game = gameInstances.getGame(gameState?.gameId ?? null);
       if (game && game.userIsPlaying(sessionId)) {
-        console.log(socket.user.id ,{ x, y });
         gameState.pickTargetAtPoint(socket, x, y);
+      }
+    });
+
+    socket.on('card-move', ({ x, y }) => {
+      const { user } = socket;
+      const { gameState } = user;
+      const game = gameInstances.getGame(gameState?.gameId ?? null);
+      if (game && game.userIsPlaying(sessionId)) {
+        gameState.dragCards(socket, x, y);
       }
     });
 
@@ -145,7 +153,6 @@ export default function initWebSocketServer(httpServer) {
       const { gameState } = user;
       const game = gameInstances.getGame(gameState?.gameId ?? null);
       if (game) {
-        console.log(socket.user.id ,{ x, y });
         game.dropCardsAtPoint(socket, x, y);
       }
     });

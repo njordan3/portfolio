@@ -150,14 +150,74 @@ export class MultiplayerGame extends Game {
             MultiplayerGame.#doEvent('player-hand-flip', data);
         });
 
+        MultiplayerGame.#socket.on('player-card-drag-start', (data) => {
+            console.log('player-card-drag-start', data);
+            const { id, draggingCardsData } = data;
+            if (this.isSpectator(id)) {
+                return;
+            }
+
+            const { stackIndex, cards } = draggingCardsData;
+            const isOwner = this.isOwner(id);
+
+            if (isOwner) {
+                draggingCardsData.stack = this._getObjectAtIndex(stackIndex, this.#owner);
+                this.#owner.draggingCardsData = draggingCardsData;
+            } else {
+                draggingCardsData.stack = this._getObjectAtIndex(stackIndex, this.#opponent);
+                this.#opponent.draggingCardsData = draggingCardsData;
+            }
+
+            if (draggingCardsData.stack) {
+                for (let i = cards.length-1; i >= 0; i--) {
+                    const index = [...stackIndex, 'up', cards[i].index];
+                    const card = isOwner ? this._getObjectAtIndex(index, this.#owner) : this._getObjectAtIndex(index, this.#opponent);
+                    if (!card) {
+                        // fetch data from server?
+                        break;
+                    }
+                    card.isDragging = true;
+                    draggingCardsData.cards[i].card = card;
+                }
+            }
+        });
+
+        MultiplayerGame.#socket.on('player-card-drag', (data) => {
+            console.log('player-card-drag', data);
+            const { id, position } = data;
+            if (this.isSpectator(id)) {
+                return;
+            }
+
+            const draggingCardsData = this.isOwner(id) ? this.#owner.draggingCardsData : this.#opponent.draggingCardsData;
+            if (draggingCardsData) {
+                const { cards } = draggingCardsData;
+                const { x, y } = position;
+                for (let i = 0; i < cards.length; i++) {
+                    cards[i].card.targetPosition = {
+                        x: x - cards[i].dragOffset.x,
+                        y: y - cards[i].dragOffset.y
+                    };
+                    // cards[i].card.position.x = x - cards[i].dragOffset.x;
+                    // cards[i].card.position.y = y - cards[i].dragOffset.y;
+                }
+            }
+
+            Camera.getInstance().forceUpdate();
+        });
+
         MultiplayerGame.#socket.on('player-card-drop', (data) => {
             console.log('player-card-drop', data);
             const { id, targetStackIndex, draggingCardsData } = data;
-            if (targetStackIndex && draggingCardsData && !this.isSpectator(id)) {
+            if (this.isSpectator(id)) {
+                return;
+            }
+
+            const isOwner = this.isOwner(id);
+            if (targetStackIndex && draggingCardsData) {
                 const { stackIndex, cards } = draggingCardsData;
                 let targetStack = null;
                 let sourceStack = null;
-                const isOwner = this.isOwner(id);
 
                 if (isOwner) {
                     targetStack = this._getObjectAtIndex(targetStackIndex, this.#owner);
@@ -185,8 +245,25 @@ export class MultiplayerGame extends Game {
                     
                     sourceStack.reset();
                 }
-                
-                // this.#resetDraggingCardsData();
+            }
+
+            // Reset saved dragging cards data
+            if (isOwner && this.#owner.draggingCardsData) {
+                this.#owner.draggingCardsData.stack.reset();
+                for (let i = 0; i < this.#owner.draggingCardsData.cards.length; i++) {
+                    this.#owner.draggingCardsData.cards[i].card.isDragging = false;
+                    this.#owner.draggingCardsData.cards[i].targetPosition = undefined;
+                }
+        
+                this.#owner.draggingCardsData = null;
+            } else if (!isOwner && this.#opponent.draggingCardsData) {
+                this.#opponent.draggingCardsData.stack.reset();
+                for (let i = 0; i < this.#opponent.draggingCardsData.cards.length; i++) {
+                    this.#opponent.draggingCardsData.cards[i].card.isDragging = false;
+                    this.#opponent.draggingCardsData.cards[i].targetPosition = undefined;
+                }
+        
+                this.#opponent.draggingCardsData = null;
             }
 
             Camera.getInstance().forceUpdate();
@@ -338,8 +415,16 @@ export class MultiplayerGame extends Game {
     
             // Render dragging cards last so they appear on top
             for (let j = 0; j < draggingCards.length; j++) {
+                if (draggingCards[j].targetPosition) {
+                    draggingCards[j].targetPosition;
+                    draggingCards[j].position.x += (draggingCards[j].targetPosition.x - draggingCards[j].position.x) * 0.10;
+                    draggingCards[j].position.y += (draggingCards[j].targetPosition.y - draggingCards[j].position.y) * 0.10;
+                    Camera.getInstance().forceUpdate();
+                }
+
                 draggingCards[j].draw(foreground);
             }
+            
         }
 
         super.renderForeground();
@@ -570,8 +655,15 @@ export class MultiplayerGame extends Game {
         MultiplayerGame.#socket.emit('card-pick', { x, y });
     }
 
+    // Throttle
+    #cardMoveTimeout;
     _onCardMove(x, y) {
-        MultiplayerGame.#socket.emit('card-move', { x, y });
+        if (!this.#cardMoveTimeout) {
+            MultiplayerGame.#socket.emit('card-move', { x, y });
+            this.#cardMoveTimeout = setTimeout(() => {
+                this.#cardMoveTimeout = undefined;
+            }, 41); // ~24 updates/s
+        }
     }
 
     _onCardDrop(x, y) {

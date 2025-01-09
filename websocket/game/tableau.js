@@ -19,7 +19,7 @@ export class Tableau extends Stack {
             }
         }
         card.position = position;
-
+        
         this[index].push(card);
     }
 
@@ -27,7 +27,6 @@ export class Tableau extends Stack {
      * Gets called when dragged cards are dropped
      */
     reset() {
-        console.log('tableau reset')
         this._position = { ...this._originalPosition };
         const position = { ...this._originalPosition };
 
@@ -39,7 +38,6 @@ export class Tableau extends Stack {
 
         // Set hitbox height
         let height = Card.height;
-        console.log(Card.height, Tableau.yOffset);
         if (this.up.length > 0) {
             const yDelta = ((this.up.length-1) * Tableau.yOffset);
             height += yDelta;

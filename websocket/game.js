@@ -63,7 +63,6 @@ export default class Game {
             if (cards.length === 1) {
                 for (let i = this.#foundations.length-1; i >= 0; i--) {
                     if ( this.#foundations[i].isPointIntersected(x, y) ) {
-                        console.log(socket.user.id, 'foundations intersected');
                         if ( this.#foundations[i].isValidDrop(cards[0].card) ) {
                             stack.up.pop(); // Dragged cards will always be from up
                             this.#foundations[i].push(cards[0].card, 'up');
@@ -73,9 +72,8 @@ export default class Game {
                                 targetStackIndex: ['foundations', i],
                                 draggingCardsData: gameState.draggingCardsJSON()
                             });
-        
-                            console.log(socket.user.id, 'foundations hit');
-                            gameState.resetDraggingCardsData(socket);
+
+                            gameState.resetDraggingCardsData();
                             return;
                         }
 
@@ -84,11 +82,9 @@ export default class Game {
                 }
             }
 
-            console.log(socket.user.id, 'miss');
             socket.to(this.#id).emit('player-card-drop', { id: socket.user.id });
-            gameState.resetDraggingCardsData(socket);
+            gameState.resetDraggingCardsData();
         }
-        console.log(socket.user.id, this.userIsPlaying(sessionId), !!gameState.draggingCardsData);
     }
 
     join(socket) {
