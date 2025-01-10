@@ -41,8 +41,9 @@ export class Tableau extends Stack {
         if (this.up.length > 0) {
             const yDelta = ((this.up.length-1) * Tableau.yOffset);
             height += yDelta;
-            const sign = this._playerType === PlayerType.OPPONENT ? -1 : 1;
-            this._position.y += (sign * yDelta);
+            if (this._playerType === PlayerType.OPPONENT) {
+                this._position.y += (-yDelta);
+            }
         }
         this._height = height;
 

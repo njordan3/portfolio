@@ -156,11 +156,15 @@ export class UserGameState {
 
             this.#cardMoveTimeout = setTimeout(() => {
                 this.#cardMoveTimeout = undefined;
-            }, 41); // ~24 updates/s
+            }, 41); // ~24 updates/s throttle
         }
     }
 
     dropCardsAtPoint(socket, x, y) {
+        if (!this._draggingCardsData) {
+            return false;
+        }
+        
         const { stack, cards } = this._draggingCardsData;
 
         for (let i = this.#tableau.length-1; i >= 0; i--) {
@@ -187,9 +191,11 @@ export class UserGameState {
     }
 
     resetDraggingCardsData() {
-        this._draggingCardsData.stack.reset();
-        for (let i = 0; i < this._draggingCardsData.cards.length; i++) {
-            this._draggingCardsData.cards[i].card.isDragging = false;
+        if (this._draggingCardsData) {
+            this._draggingCardsData.stack.reset();
+            for (let i = 0; i < this._draggingCardsData.cards.length; i++) {
+                this._draggingCardsData.cards[i].card.isDragging = false;
+            }
         }
 
         this._draggingCardsData = null;
@@ -213,6 +219,18 @@ export class UserGameState {
         };
     }
 
+    getCards() {
+        const tableau = [];
+        for (let i = 0; i < this.#tableau.length; i++) {
+            tableau.push(this.#tableau[i].toJSON());
+        }
+
+        return {
+            hand: this.#hand.toJSON(),
+            tableau,
+        }
+    }
+
     toJSON() {
         const tableau = [];
         for (let i = 0; i < this.#tableau.length; i++) {
@@ -223,8 +241,7 @@ export class UserGameState {
             ready: this.ready,
             connected: this.connected,
             done: this.done,
-            hand: this.#hand.toJSON(),
-            tableau,
+            ...this.getCards(),
             draggingCardsData: this.draggingCardsJSON(),
         };
     }

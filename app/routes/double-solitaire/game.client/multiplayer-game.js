@@ -194,12 +194,11 @@ export class MultiplayerGame extends Game {
                 const { cards } = draggingCardsData;
                 const { x, y } = position;
                 for (let i = 0; i < cards.length; i++) {
+                    // Card position gets interpolated during render based on this target render
                     cards[i].card.targetPosition = {
                         x: x - cards[i].dragOffset.x,
                         y: y - cards[i].dragOffset.y
                     };
-                    // cards[i].card.position.x = x - cards[i].dragOffset.x;
-                    // cards[i].card.position.y = y - cards[i].dragOffset.y;
                 }
             }
 
@@ -282,12 +281,46 @@ export class MultiplayerGame extends Game {
                     this.#owner = game.owner;
                     this.#owner.hand = Hand.createFromObject(game.owner.hand);
                     this.#owner.tableau = Array.from({ length: 7 }, (e, i) => Tableau.createFromObject(game.owner.tableau[i]));
+                    
+                    if (game.owner.draggingCardsData) {
+                        const { stackIndex, cards } = game.owner.draggingCardsData;
+                        this.#owner.draggingCardsData.stack = this._getObjectAtIndex(stackIndex, this.#owner);
+
+                        if (this.#owner.draggingCardsData.stack) {
+                            for (let i = cards.length-1; i >= 0; i--) {
+                                const index = [...stackIndex, 'up', cards[i].index];
+                                const card = this._getObjectAtIndex(index, this.#owner);
+                                if (!card) {
+                                    break;
+                                }
+                                card.isDragging = true;
+                                this.#owner.draggingCardsData.cards[i].card = card;
+                            }
+                        }
+                    }
                 }
 
                 if (game.opponent) {
                     this.#opponent = game.opponent;
                     this.#opponent.hand = Hand.createFromObject(game.opponent.hand);
                     this.#opponent.tableau = Array.from({ length: 7 }, (e, i) => Tableau.createFromObject(game.opponent.tableau[i]));
+
+                    if (game.opponent.draggingCardsData) {
+                        const { stackIndex, cards } = game.opponent.draggingCardsData;
+                        this.#opponent.draggingCardsData.stack = this._getObjectAtIndex(stackIndex, this.#opponent);
+
+                        if (this.#opponent.draggingCardsData.stack) {
+                            for (let i = cards.length-1; i >= 0; i--) {
+                                const index = [...stackIndex, 'up', cards[i].index];
+                                const card = this._getObjectAtIndex(index, this.#opponent);
+                                if (!card) {
+                                    break;
+                                }
+                                card.isDragging = true;
+                                this.#opponent.draggingCardsData.cards[i].card = card;
+                            }
+                        }
+                    }
                 }
 
                 if (game.spectators) {
@@ -651,23 +684,66 @@ export class MultiplayerGame extends Game {
     }
     
     _onCardPick(x, y) {
-        console.log('pick', x, y);
         MultiplayerGame.#socket.emit('card-pick', { x, y });
     }
 
-    // Throttle
     #cardMoveTimeout;
     _onCardMove(x, y) {
         if (!this.#cardMoveTimeout) {
             MultiplayerGame.#socket.emit('card-move', { x, y });
             this.#cardMoveTimeout = setTimeout(() => {
                 this.#cardMoveTimeout = undefined;
-            }, 41); // ~24 updates/s
+            }, 41); // ~24 updates/s throttle
         }
     }
 
-    _onCardDrop(x, y) {
-        console.log('drop', x, y);
-        MultiplayerGame.#socket.emit('card-drop', { x, y });
+    async _onCardDrop(x, y, droppedOnTarget) {
+        try {
+            const { success, code, gameState } = await MultiplayerGame.#socket.timeout(1000).emitWithAck('card-drop', { x, y, droppedOnTarget });
+            console.log('card-drop', success, code, gameState);
+            if (!success) {
+                this._loadGameState(gameState);
+            }
+        } catch (e) {
+            console.log(e);
+            this._requestGameState();
+        }
+    }
+
+    async _requestGameState() {
+        try {
+            const data = await MultiplayerGame.#socket.timeout(1000).emitWithAck('request-game-state');
+            const { success, code, gameState } = data;
+            console.log('request-game-state', success, code, gameState);
+            if (success) {
+                this._loadGameState(gameState);
+            }
+
+            MultiplayerGame.#doEvent('request-game-state', data);
+        } catch (e) {
+            console.log(e);
+        }
+    }
+
+    _loadGameState(gameState) {
+        const { hand, tableau, foundations } = gameState;
+
+        if (hand && tableau) {
+            this.hand = Hand.createFromObject(hand);
+            this.tableau = Array.from({ length: 7 }, (e, i) => Tableau.createFromObject(tableau[i]));
+
+            if (this.isOwner()) {
+                this.#owner.hand = this.hand;
+                this.#owner.tableau = this.tableau;
+            } else if (this.isOpponent()) {
+                this.#opponent.hand = this.hand;
+                this.#opponent.tableau = this.tableau;
+            }
+        }
+        
+        this.foundations = Array.from({ length: 8 }, (e, i) => Foundations.createFromObject(foundations[i]));
+
+        this._resetDraggingCardsData();
+        Camera.getInstance().forceUpdate();
     }
 }

@@ -5,7 +5,12 @@ import { sanitizeString } from './utils.js';
 
 export default class Game {
     #id;
+    get id() {
+        return this.#id;
+    }
+
     name;
+
     #startTime = 5;
     get startTime() {
         return this.#startTime;
@@ -23,6 +28,11 @@ export default class Game {
     
     // 8 piles that build on the 8 aces
     #foundations;
+
+    #stats = {}
+    get() {
+        return this.#stats;
+    }
 
     constructor(socket, id, name) {
         this.#id = id;
@@ -43,18 +53,13 @@ export default class Game {
         socket.join(this.#id);
     }
 
-    get id() {
-        return this.#id;
-    }
-
     dropCardsAtPoint(socket, x, y) {
         const { sessionId, user } = socket;
         const { gameState } = user;
         if (this.userIsPlaying(sessionId) && gameState.draggingCardsData) {
-
             // Try dropping to user tableau. If dropped then return early
             if (gameState.dropCardsAtPoint(socket, x, y)) {
-                return;
+                return true;
             }
 
             const { stack, cards } = gameState.draggingCardsData;
@@ -66,6 +71,7 @@ export default class Game {
                         if ( this.#foundations[i].isValidDrop(cards[0].card) ) {
                             stack.up.pop(); // Dragged cards will always be from up
                             this.#foundations[i].push(cards[0].card, 'up');
+                            // this.#stats[user.id].score += 1;
 
                             socket.to(this.#id).emit('player-card-drop', {
                                 id: socket.user.id,
@@ -74,7 +80,7 @@ export default class Game {
                             });
 
                             gameState.resetDraggingCardsData();
-                            return;
+                            return true;
                         }
 
                         break;
@@ -85,6 +91,8 @@ export default class Game {
             socket.to(this.#id).emit('player-card-drop', { id: socket.user.id });
             gameState.resetDraggingCardsData();
         }
+
+        return false;
     }
 
     join(socket) {
@@ -158,6 +166,17 @@ export default class Game {
         io.in(this.#id).socketsLeave(this.#id);
     }
 
+    start() {
+        const userSessions = UserSessions.getInstance();
+        const owner = userSessions.getSession(this.#owner)?.user;
+        const opponent = userSessions.getSession(this.#opponent)?.user;
+        if (owner && opponent) {
+            this.#stats[owner.id] = { name: owner.name, score: 0 };
+            this.#stats[opponent.id] = { name: opponent.name, score: 0 };
+        }
+        this.started = true;
+    }
+
     ready() {
         const userSessions = UserSessions.getInstance();
         return userSessions.getSession(this.#owner)?.user.gameState?.ready && userSessions.getSession(this.#opponent)?.user.gameState?.ready;
@@ -188,8 +207,25 @@ export default class Game {
         return sessionId === this.#opponent;
     }
 
-    getStats() {
-        return {}
+    getCards(socket) {
+        const { user } = socket;
+        const { gameState } = user;
+
+        const foundations = [];
+        for (let i = 0; i < this.#foundations.length; i++) {
+            foundations.push(this.#foundations[i].toJSON());
+        }
+
+        let result = { foundations };
+
+        if (gameState) {
+            result = {
+                ...result,
+                ...gameState.getCards(),
+            }
+        }
+
+        return result;
     }
 
     toGameJSON() {

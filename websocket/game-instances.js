@@ -66,7 +66,7 @@ export default class GameInstances {
     deleteGame(gameId) {
       const game = this.getGame(gameId);
       if (game) {
-        GameInstances.io.to(gameId).emit('game-end', game.getStats());
+        GameInstances.io.to(gameId).emit('game-end', game.stats);
         GameInstances.io.emit('update-game-browser', { action: 'delete', gameId });
         game.allLeave(GameInstances.io);
         this.#instances.delete(gameId);

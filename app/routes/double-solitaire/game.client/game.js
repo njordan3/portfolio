@@ -229,7 +229,7 @@ export class Game {
 
     _onCardMove(x, y) {}
 
-    _onCardDrop(x, y) {}
+    async _onCardDrop(x, y, droppedOnTarget) {}
 
     /**
      * Check clickable Card and Stack hitboxes at a given coordinate.
@@ -279,7 +279,6 @@ export class Game {
                     stackIndex: ['tableau', i, 'up'],
                     cards: [],
                 };
-
                 for (let j = this.tableau[i].up.length-1; j >= 0; j--) {
                     const { position } = this.tableau[i].up[j];
                     draggingCardsData.cards.push({
@@ -321,7 +320,7 @@ export class Game {
                     }
                     
                     this._resetDraggingCardsData();
-                    return;
+                    return true;
                 }
             }
         }
@@ -335,23 +334,26 @@ export class Game {
                         this.foundations[i].push(cards[0].card, 'up');
     
                         this._resetDraggingCardsData();
-                        return;
+                        return true;
                     }
                 }
             }
         }
         
         this._resetDraggingCardsData();
-        return;
+        return false;
     }
 
     _resetDraggingCardsData() {
-        this._draggingCardsData.stack.reset();
-        for (let i = 0; i < this._draggingCardsData.cards.length; i++) {
-            this._draggingCardsData.cards[i].card.isDragging = false;
+        if (this._draggingCardsData) {
+            this._draggingCardsData.stack.reset();
+            for (let i = 0; i < this._draggingCardsData.cards.length; i++) {
+                this._draggingCardsData.cards[i].card.isDragging = false;
+            }
+    
+            Camera.getInstance().forceUpdate();
         }
-
-        Camera.getInstance().forceUpdate();
+        
         this._draggingCardsData = null;
     }
 
@@ -369,20 +371,6 @@ export class Game {
         return null;
     }
 
-    // _getStackAtIndex(index, player = null) {
-    //     const source = player ? player : this;
-    //     if (index !== null && index.length > 0) {
-    //         let stack = source[index[0]];
-    //         for (let i = 1; i < index.length; i++) {
-    //             stack = stack[index[i]];
-    //         }
-
-    //         return stack;
-    //     }
-
-    //     return null;
-    // }
-
     mouseEvent(e) {
         const mouse = Mouse.getInstance();
         const camera = Camera.getInstance();
@@ -395,7 +383,6 @@ export class Game {
             x: e.clientX - e.target.offsetLeft,
             y: e.clientY - e.target.offsetTop
         };
-
     
         if (mouse.button) {
             if (e.type === 'mousedown') {
@@ -420,17 +407,9 @@ export class Game {
                 }
             } else if (e.type === 'mouseup' && this._draggingCardsData !== null) {
                 const { x, y } = camera.getBoardPosition(mouse.position.x, mouse.position.y);
-                this._onCardDrop(x, y);
-                this.#dropCardsAtPoint(x, y);
+                const droppedOnTarget = this.#dropCardsAtPoint(x, y);
+                this._onCardDrop(x, y, droppedOnTarget);
             }
-
-            // check x and y seperately so the window doesnt get stuck
-            // if (checkWindowXCollision(bg_coords, translation)) {
-            //     camera.current.x += moveStart.current.x - x;
-            // }
-            // if (checkWindowYCollision(bg_coords, translation)) {
-            //     camera.current.y += moveStart.current.y - y;
-            // }
         }
 
         if (e.type === 'mouseup' || e.type === 'mouseout') {

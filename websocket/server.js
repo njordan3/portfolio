@@ -91,7 +91,7 @@ export default function initWebSocketServer(httpServer) {
 
       if (ready && game.ready()) {
         game.startStartTimer(() => {
-          game.started = true;
+          game.start();
           io.to(game.id).emit('game-start');
         });
         io.to(game.id).emit('game-start-timer', { time: game.startTime });
@@ -148,13 +148,51 @@ export default function initWebSocketServer(httpServer) {
       }
     });
 
-    socket.on('card-drop', ({ x, y }) => {
+    socket.on('card-drop', ({ x, y, droppedOnTarget }, callback) => {
+      const result = {
+        success: false,
+        code: 'failed-to-drop-card',
+      }
+
+      try {
+        const { user } = socket;
+        const { gameState } = user;
+        const game = gameInstances.getGame(gameState?.gameId ?? null);
+        if (game) {
+          if (game.dropCardsAtPoint(socket, x, y) === droppedOnTarget) {
+            return callback({
+              success: true
+            });
+          }
+        }
+  
+        if (gameState) {
+          // Reset cards if drop fails
+          gameState.resetDraggingCardsData();
+          result.gameState = game.getCards(socket);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+
+      callback(result);
+    });
+
+    socket.on('request-game-state', (callback) => {
       const { user } = socket;
       const { gameState } = user;
       const game = gameInstances.getGame(gameState?.gameId ?? null);
       if (game) {
-        game.dropCardsAtPoint(socket, x, y);
+        return callback({
+          success: true,
+          gameState: game.getCards(socket)
+        });
       }
+
+      callback({
+        success: false,
+        code: 'failed-to-get-game-state'
+      });
     });
   
     socket.on('disconnecting', () => {

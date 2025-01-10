@@ -12,7 +12,6 @@ export class Tableau extends Stack {
             if (topCard) {
                 const sign = card.yFlipped ? -1 : 1;
                 position.y = topCard.position.y + (sign * Tableau.yOffset);
-
                 if (this._playerType === Game.playerTypes.OPPONENT) {
                     this._position.y += (sign * Tableau.yOffset);
                 }
@@ -43,8 +42,10 @@ export class Tableau extends Stack {
         if (this.up.length > 0) {
             const yDelta = ((this.up.length-1) * Tableau.yOffset);
             height += yDelta;
-            const sign = this._playerType === Game.playerTypes.OPPONENT ? -1 : 1;
-            this._position.y += (sign * yDelta);
+            if (this._playerType === Game.playerTypes.OPPONENT) {
+                this._position.y += (-yDelta);
+            }
+            
         }
         this._height = height;
 
