@@ -20,6 +20,7 @@ export default class Game {
         return this.#startTimer;
     }
     started = false
+    #ended = false;
 
     // Session IDs
     #owner;
@@ -186,12 +187,29 @@ export default class Game {
 
     ready() {
         const userSessions = UserSessions.getInstance();
-        return userSessions.getSession(this.#owner)?.user.ready && userSessions.getSession(this.#opponent)?.user.ready;
+        const owner = userSessions.getSession(this.#owner)?.user;
+        const opponent = userSessions.getSession(this.#opponent)?.user;
+        if (owner?.ready && opponent?.ready) {
+            owner.gameState.flags.ready = false;
+            opponent.gameState.flags.ready = false;
+            return true;
+        }
+
+        return false;
     }
 
     done() {
         const userSessions = UserSessions.getInstance();
-        return userSessions.getSession(this.#owner)?.user.done && userSessions.getSession(this.#opponent)?.user.done;
+        const owner = userSessions.getSession(this.#owner)?.user;
+        const opponent = userSessions.getSession(this.#opponent)?.user;
+        if (owner?.done && opponent?.done) {
+            owner.gameState.flags.done = false;
+            opponent.gameState.flags.done = false;
+            this.#ended = true;
+            return true;
+        }
+
+        return false;
     }
 
     restart() {
@@ -200,12 +218,15 @@ export default class Game {
         const opponent = userSessions.getSession(this.#opponent)?.user;
         if ((owner && owner.voteRestart && !opponent) || (owner && owner.voteRestart && opponent && opponent.voteRestart)) {
             if (owner) {
+                owner.gameState.flags.voteRestart = false;
                 owner.gameState.restart(PlayerType.OWNER);
             }
             if (opponent) {
+                opponent.gameState.flags.voteRestart = false;
                 opponent.gameState.restart(PlayerType.OPPONENT);
             }
             
+            this.#ended = false;
             this.#stats = {};
 
             const { stackGap, foundationX, foundationY } = MultiplayerDimensions.getInstance();
@@ -284,15 +305,21 @@ export default class Game {
         for (let i = 0; i < this.#foundations.length; i++) {
             foundations.push(this.#foundations[i].toJSON());
         }
-        
-        return {
+
+        const result = {
             name: this.name,
             owner,
             opponent,
             spectators: spectators,
-            started: this.started,
-            foundations
+            foundations,
+            started: this.started
         };
+
+        if (this.#ended) {
+            result.stats = this.#stats;
+        }
+        
+        return result;
     }
 
     toJSON() {

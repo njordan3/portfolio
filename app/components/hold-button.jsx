@@ -89,7 +89,7 @@ export default function HoldButton(props) {
             disabled={disabled}
         >
             <div 
-                className="absolute bottom-0 left-0 h-[5px] bg-[green]"
+                className="absolute bottom-0 left-0 h-[5px] bg-[green] select-none"
                 style={{
                     width: `${holdProgress}%`,
                     transition: 'width 0.1s ease'

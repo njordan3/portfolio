@@ -193,6 +193,9 @@ export default function DoubleSolitaire() {
                 if (game.started) {
                     setGameStarted(true);
                 }
+                if (game.stats) {
+                    setLastGameStats(game.stats);
+                }
             }
         });
 
@@ -210,7 +213,7 @@ export default function DoubleSolitaire() {
             <div id="header"></div>
             <div id="left-sidebar">
                 <div className="terminal-logo">
-                    <div className="logo terminal-prompt">
+                    <div className="logo terminal-prompt select-none">
                         <a href="/" target="_blank" className="no-style">Nicholas Jordan</a>
                     </div>
                 </div>
@@ -221,19 +224,22 @@ export default function DoubleSolitaire() {
                         {timer ? (
                             <CountdownTimer className="bg-[var(--success-color)] text-[var(--invert-font-color)]" initialSeconds={timer} text="Starting In:" />
                         ) : (
-                            <UsernameInput className="mt-4" disabled={playerType !== null} />
+                            <UsernameInput className="mt-4 select-none" disabled={playerType !== null} />
                         )}
-                        <fieldset className="flex flex-col my-4 min-w-0 h-full">
+                        <fieldset className="flex flex-col my-4 min-w-0 h-full select-none">
                         {creatingGame && (
                             <GameSettings />
                         )}
                         {!creatingGame && playerType === null && !lastGameStats && (
                             <GameBrowser games={games} />
                         )}
+                        {playerType !== null && (
+                            <GameUsers />
+                        )}
                         {!creatingGame && lastGameStats && (
                             <>
-                                <legend>Game Stats</legend>
-                                <div className="border border-font-color mb-4 py-[0.7em] px-[0.5em]">
+                                <fieldset className="flex flex-col my-4 min-w-0">
+                                    <legend>Game Stats</legend>
                                     {!lastGameStats.winner ? (
                                         <p>You Tied</p>
                                     ) : (
@@ -243,21 +249,20 @@ export default function DoubleSolitaire() {
                                             <p>You Lost</p>
                                         )
                                     )}
-                                    <p></p>
                                     {Object.keys(lastGameStats.stats).map((userId) => {
                                         const { name, score, me } = lastGameStats.stats[userId];
                                         return (
-                                            <p key={userId} className={`${!me ? 'text-[var(--secondary-color)]' : ''} my-1 text-xs`}>{name}: {score}</p>
+                                            <div key={userId} className={`${!me ? 'text-[var(--secondary-color)]' : ''} flex flex-row text-nowrap`}>
+                                                <p className="my-1 text-xs truncate">{name}</p>
+                                                <p className="my-1 text-xs">: {score}</p>
+                                            </div>
                                         );
                                     })}
-                                </div>
+                                </fieldset>
                                 {playerType === null && (
                                     <button className="btn btn-error" onClick={() => setLastGameStats(null)}>Hide Stats</button>
                                 )}
                             </>
-                        )}
-                        {playerType !== null && !lastGameStats && (
-                            <GameUsers />
                         )}
                         </fieldset>
                     </>

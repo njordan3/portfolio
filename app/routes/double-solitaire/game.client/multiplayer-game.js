@@ -31,6 +31,10 @@ export class MultiplayerGame extends Game {
         return this.#spectators;
     }
 
+    get userId() {
+        return MultiplayerGame.#socket.userId;
+    }
+
     constructor() {
         super();
 
@@ -68,6 +72,22 @@ export class MultiplayerGame extends Game {
         MultiplayerGame.#socket.on('game-restart', (data) => {
             console.log('game-restart', data);
             this.loadGame(data);
+            const userUpdate = {
+                ready: false,
+                done: false,
+                voteRestart: false,
+            };
+            this.#owner = {
+                ...this.#owner,
+                ...userUpdate,
+            };
+            this.#opponent = {
+                ...this.#opponent,
+                ...userUpdate,
+            };
+
+            MultiplayerGame.#doEvent('owner-update', userUpdate);
+            MultiplayerGame.#doEvent('opponent-update', userUpdate);
             MultiplayerGame.#doEvent('game-restart', data);
         });
 
@@ -103,10 +123,22 @@ export class MultiplayerGame extends Game {
             
             data = processGameStats(data);
             this._started = false;
-            
-            this.#owner.ready = this.#opponent.ready = false;
-            this.#owner.done = this.#opponent.done = false;
-            this.#owner.voteRestart = this.#opponent.voteRestart = false;
+            const userUpdate = {
+                ready: false,
+                done: false,
+                voteRestart: false,
+            };
+            this.#owner = {
+                ...this.#owner,
+                ...userUpdate,
+            };
+            this.#opponent = {
+                ...this.#opponent,
+                ...userUpdate,
+            };
+
+            MultiplayerGame.#doEvent('owner-update', userUpdate);
+            MultiplayerGame.#doEvent('opponent-update', userUpdate);
             MultiplayerGame.#doEvent('game-complete', data);
         });
 
@@ -399,6 +431,10 @@ export class MultiplayerGame extends Game {
                     data.userDone = game.opponent?.done;
                     data.playerType= Game.playerTypes.OPPONENT
                     Camera.getInstance().rotation = Math.PI;
+                }
+                
+                if (game.stats) {
+                    game.stats = processGameStats(game.stats);
                 }
                 
                 this.foundations = Array.from({ length: 8 }, (e, i) => Foundations.createFromObject(game.foundations[i]));
@@ -726,7 +762,7 @@ export class MultiplayerGame extends Game {
     unloadGame() {
         this.#owner = undefined;
         this.#opponent = undefined;
-        this.#spectators = undefined;
+        this.#spectators = {};
         this.tableau = undefined;
         this.hand = undefined;
         this.foundations = undefined;

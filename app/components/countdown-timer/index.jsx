@@ -26,7 +26,7 @@ export default memo(function CountdownTimer({ initialSeconds = 0, className = ''
   }, [milliseconds, secondDisplay]);
 
   return (
-    <div className="mt-4">
+    <div className="mt-4 select-none">
       {text}
       <div className={`border border-font-color py-[0.7em] px-[0.5em] flex justify-center ${className}`}>
         <span
