@@ -11,6 +11,8 @@ export class Game {
     foundations;    // 4 piles that build on the 4 aces
     hand;           // Cards in hand
 
+    _started = true;
+
     static _cardSpriteSheet;
     static get cardSpriteSheet() {
         return Game._cardSpriteSheet;
@@ -229,7 +231,7 @@ export class Game {
 
     _onCardMove(x, y) {}
 
-    async _onCardDrop(x, y, droppedOnTarget) {}
+    async _onCardDrop(x, y, dropTarget) {}
 
     /**
      * Check clickable Card and Stack hitboxes at a given coordinate.
@@ -237,6 +239,10 @@ export class Game {
      * @param {number} y Y board coordinate.
      */
     #pickTargetAtPoint(x, y) {
+        if (!this._started) {
+            return;
+        }
+
         if ( this.hand.isPointIntersected(x, y) ) {
             this._onCardPick(x, y);
 
@@ -309,6 +315,10 @@ export class Game {
      * @param {number} y Y board coordinate
      */
     #dropCardsAtPoint(x, y) {
+        if (!this._started) {
+            return false;
+        }
+        
         const { stack, cards } = this._draggingCardsData;
 
         for (let i = this.tableau.length-1; i >= 0; i--) {
@@ -320,7 +330,7 @@ export class Game {
                     }
                     
                     this._resetDraggingCardsData();
-                    return true;
+                    return `tableau.${i}`;
                 }
             }
         }
@@ -334,7 +344,7 @@ export class Game {
                         this.foundations[i].push(cards[0].card, 'up');
     
                         this._resetDraggingCardsData();
-                        return true;
+                        return `foundations.${i}`;
                     }
                 }
             }
@@ -407,8 +417,8 @@ export class Game {
                 }
             } else if (e.type === 'mouseup' && this._draggingCardsData !== null) {
                 const { x, y } = camera.getBoardPosition(mouse.position.x, mouse.position.y);
-                const droppedOnTarget = this.#dropCardsAtPoint(x, y);
-                this._onCardDrop(x, y, droppedOnTarget);
+                const dropTarget = this.#dropCardsAtPoint(x, y);
+                this._onCardDrop(x, y, dropTarget);
             }
         }
 

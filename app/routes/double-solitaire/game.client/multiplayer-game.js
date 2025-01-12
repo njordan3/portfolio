@@ -34,6 +34,8 @@ export class MultiplayerGame extends Game {
     constructor() {
         super();
 
+        this._started = false;
+
         if (this._instance) {
             throw Error('Multiplayer Game already initialized');
         }
@@ -63,15 +65,54 @@ export class MultiplayerGame extends Game {
             MultiplayerGame.#doEvent('update-game-browser', data);
         });
 
-        MultiplayerGame.#socket.on('game-state', (data) => {
-            console.log('game-state', data);
-            MultiplayerGame.#doEvent('game-state', data);
+        MultiplayerGame.#socket.on('game-restart', (data) => {
+            console.log('game-restart', data);
+            this.loadGame(data);
+            MultiplayerGame.#doEvent('game-restart', data);
         });
+
+        const processGameStats = (data) => {
+            let winner = null;
+            Object.keys(data).map((userId) => {
+                const { score } = data[userId];
+                if (!winner || score > data[winner].score) {
+                    winner = userId;
+                } else {
+                    winner = null;  // tie
+                }
+                data[userId].me = userId === MultiplayerGame.#socket.userId;
+            });
+
+            return {
+                winner,
+                stats: data,
+            };
+        }
 
         MultiplayerGame.#socket.on('game-end', (data) => {
             console.log('game-end', data);
-            this.cleanGame();
+            if (Object.keys(data).length > 0) {
+                data = processGameStats(data);
+            }
+            this.unloadGame();
             MultiplayerGame.#doEvent('game-end', data);
+        });
+        
+        MultiplayerGame.#socket.on('game-complete', (data) => {
+            console.log('game-complete', data);
+            
+            data = processGameStats(data);
+            this._started = false;
+            
+            this.#owner.ready = this.#opponent.ready = false;
+            this.#owner.done = this.#opponent.done = false;
+            this.#owner.voteRestart = this.#opponent.voteRestart = false;
+            MultiplayerGame.#doEvent('game-complete', data);
+        });
+
+        MultiplayerGame.#socket.on('game', (data) => {
+            console.log('game-complete', data);
+            MultiplayerGame.#doEvent('game-complete', data);
         });
 
         MultiplayerGame.#socket.on('user-joined', (data) => {
@@ -122,9 +163,26 @@ export class MultiplayerGame extends Game {
             }
         });
 
-        MultiplayerGame.#socket.on('game-start', (data) => {
-            console.log('game-start', data);
-            MultiplayerGame.#doEvent('game-start', data);
+        MultiplayerGame.#socket.on('game-start', () => {
+            console.log('game-start');
+            this._started = true;
+            const userUpdate = {
+                ready: false,
+                done: false,
+                voteRestart: false,
+            };
+            this.#owner = {
+                ...this.#owner,
+                ...userUpdate,
+            };
+            this.#opponent = {
+                ...this.#opponent,
+                ...userUpdate,
+            };
+
+            MultiplayerGame.#doEvent('owner-update', userUpdate);
+            MultiplayerGame.#doEvent('opponent-update', userUpdate);
+            MultiplayerGame.#doEvent('game-start');
         });
 
         MultiplayerGame.#socket.on('game-start-timer', (data) => {  
@@ -277,6 +335,7 @@ export class MultiplayerGame extends Game {
             MultiplayerGame.#socket.userId = userId;
 
             if (game) {
+                data.playerType= Game.playerTypes.SPECTATOR;
                 if (game.owner) {
                     this.#owner = game.owner;
                     this.#owner.hand = Hand.createFromObject(game.owner.hand);
@@ -332,15 +391,18 @@ export class MultiplayerGame extends Game {
                     this.tableau = this.#owner.tableau;
                     data.userReady = game.owner?.ready;
                     data.userDone = game.owner?.done;
+                    data.playerType= Game.playerTypes.OWNER
                 } else if (this.isOpponent(userId)) {
                     this.hand = this.#opponent.hand;
                     this.tableau = this.#opponent.tableau;
                     data.userReady = game.opponent?.ready;
                     data.userDone = game.opponent?.done;
+                    data.playerType= Game.playerTypes.OPPONENT
                     Camera.getInstance().rotation = Math.PI;
                 }
                 
                 this.foundations = Array.from({ length: 8 }, (e, i) => Foundations.createFromObject(game.foundations[i]));
+                this._started = game.started;
                 GameController.setIsMultiplayer(true);
                 Camera.getInstance().recenter();
             }
@@ -467,7 +529,7 @@ export class MultiplayerGame extends Game {
         super.renderBackground();
 
         const camera = Camera.getInstance();
-        const { background } = camera.contexts;
+        const { foreground } = camera.contexts;
 
         const deckRenders = [];
         if (this.isOwner() && this.#opponent) {
@@ -487,10 +549,10 @@ export class MultiplayerGame extends Game {
             const { tableau, hand } = deckRenders[i];
 
             for (let j = 0; j < tableau.length; j++) {
-                tableau[j].renderBackground(background);
+                tableau[j].renderBackground(foreground);
             }
 
-            hand.renderBackground(background);
+            hand.renderBackground(foreground);
         }
     }
 
@@ -514,6 +576,10 @@ export class MultiplayerGame extends Game {
     isOpponent(userId = null) {
         const id = userId ? userId : MultiplayerGame.#socket.userId;
         return id === (this.#opponent?.id ?? null);
+    }
+
+    isPlayer(userId = null) {
+        return this.isOwner(userId) || this.isOpponent(userId);
     }
 
     isSpectator() {
@@ -560,33 +626,15 @@ export class MultiplayerGame extends Game {
                 const { success, code, events, game } = await MultiplayerGame.#socket.timeout(3000).emitWithAck('join-game', { gameId, username: this.#username });
                 console.log('join-game', { success, code, events, game });
                 if (success) {
-                    if (game.owner) {
-                        this.#owner = game.owner;
-                        this.#owner.hand = Hand.createFromObject(game.owner.hand);
-                        this.#owner.tableau = Array.from({ length: 7 }, (e, i) => Tableau.createFromObject(game.owner.tableau[i]));
-                    }
-    
-                    if (game.opponent) {
-                        this.#opponent = game.opponent;
-                        this.#opponent.hand = Hand.createFromObject(game.opponent.hand);
-                        this.#opponent.tableau = Array.from({ length: 7 }, (e, i) => Tableau.createFromObject(game.opponent.tableau[i]));
-                    }
-    
-                    if (game.spectators) {
-                        this.#spectators = game.spectators;
-                    }
+                    this.loadGame(game);
 
-                    if (this.isOpponent(game.opponent.id)) {
-                        Camera.getInstance().rotation = Math.PI;
-                        this.hand = this.#opponent.hand;
-                        this.tableau = this.#opponent.tableau;
+                    let playerType = Game.playerTypes.SPECTATOR;
+                    if (this.isOwner()) {
+                        playerType = Game.playerTypes.OWNER;
+                    } else if (this.isOpponent()) {
+                        playerType = Game.playerTypes.OPPONENT;
                     }
-
-                    this.foundations = Array.from({ length: 8 }, (e, i) => Foundations.createFromObject(game.foundations[i]));
-
-                    GameController.setIsMultiplayer(true);
-                    Camera.getInstance().recenter();
-                    MultiplayerGame.#doEvent('join-game');
+                    MultiplayerGame.#doEvent('join-game', playerType);
                 }
             } catch (e) {
                 // the server did not acknowledge the event
@@ -603,7 +651,7 @@ export class MultiplayerGame extends Game {
                 const { success, events } = await MultiplayerGame.#socket.timeout(3000).emitWithAck('leave-game');
                 console.log('leave-game', { success, events });
                 if (success) {
-                    this.cleanGame();
+                    this.unloadGame();
                     Camera.getInstance().recenter();
                     MultiplayerGame.#doEvent('leave-game');
                 }
@@ -614,70 +662,75 @@ export class MultiplayerGame extends Game {
         
         return false;
     }
-    
-    async readyUp(ready) {
+
+    async handleToggleFlag(toggle, flag) {
         const { sessionId } = MultiplayerGame.#socket.auth;
-        if (sessionId && this.isGameConnected()) {
+        if (sessionId && this.isPlayer()) {
             try {
-                const { success, code, events } = await MultiplayerGame.#socket.timeout(3000).emitWithAck('ready-up', { ready });
-                console.log('ready-up', { success, code, events });
+                const { success, code, events } = await MultiplayerGame.#socket.timeout(3000).emitWithAck('toggle-flag', { flag, toggle });
+                console.log('toggle-flag', { success, code, events });
                 if (!success) {
-                    ready = !ready;
+                    toggle = !toggle;
                 }
             } catch (e) {
                 // the server did not acknowledge the event
-                ready = !ready;
+                toggle = !toggle;
             }
 
             if (this.isOwner()) {
-                this.#owner.ready = ready;
-                MultiplayerGame.#doEvent('owner-update', { ready });
+                this.#owner[flag] = toggle;
+                MultiplayerGame.#doEvent('owner-update', { [flag]: toggle });
             } else if (this.isOpponent()) {
-                this.#opponent.ready = ready;
-                MultiplayerGame.#doEvent('opponent-update', { ready });
+                this.#opponent[flag] = toggle;
+                MultiplayerGame.#doEvent('opponent-update', { [flag]: toggle });
             }
             
-            MultiplayerGame.#doEvent('ready-up', ready);
+            MultiplayerGame.#doEvent('toggle-flag', { flag, toggle });
         }
          
         return false;
     }
 
-    async done(done) {
-        const { sessionId } = MultiplayerGame.#socket.auth;
-        if (sessionId && this.isGameConnected()) {
-            try {
-                const { success, code, events } = await MultiplayerGame.#socket.timeout(3000).emitWithAck('set-done', { done });
-                console.log('set-done', { success, code, events });
-                if (!success) {
-                    done = !done;
-                }
-            } catch (e) {
-                // the server did not acknowledge the event
-                done = !done;
-            }
-
-            if (this.isOwner()) {
-                this.#owner.done = done;
-                MultiplayerGame.#doEvent('owner-update', { done });
-            } else if (this.isOpponent()) {
-                this.#opponent.done = done;
-                MultiplayerGame.#doEvent('opponent-update', { done });
-            }
-            
-            MultiplayerGame.#doEvent('set-done', done);
+    loadGame(game) {
+        if (game.owner) {
+            this.#owner = game.owner;
+            this.#owner.hand = Hand.createFromObject(game.owner.hand);
+            this.#owner.tableau = Array.from({ length: 7 }, (e, i) => Tableau.createFromObject(game.owner.tableau[i]));
         }
-         
-        return false;
+
+        if (game.opponent) {
+            this.#opponent = game.opponent;
+            this.#opponent.hand = Hand.createFromObject(game.opponent.hand);
+            this.#opponent.tableau = Array.from({ length: 7 }, (e, i) => Tableau.createFromObject(game.opponent.tableau[i]));
+        }
+
+        if (game.spectators) {
+            this.#spectators = game.spectators;
+        }
+
+        if (this.isOwner()) {
+            this.hand = this.#owner.hand;
+            this.tableau = this.#owner.tableau;
+        } else if (this.isOpponent()) {
+            Camera.getInstance().rotation = Math.PI;
+            this.hand = this.#opponent.hand;
+            this.tableau = this.#opponent.tableau;
+        }
+
+        this.foundations = Array.from({ length: 8 }, (e, i) => Foundations.createFromObject(game.foundations[i]));
+
+        GameController.setIsMultiplayer(true);
+        Camera.getInstance().recenter();
     }
 
-    cleanGame() {
+    unloadGame() {
         this.#owner = undefined;
         this.#opponent = undefined;
         this.#spectators = undefined;
         this.tableau = undefined;
         this.hand = undefined;
         this.foundations = undefined;
+        this._started = false;
         
         GameController.setIsMultiplayer(false);
         Camera.getInstance().rotation = 0;
@@ -697,9 +750,9 @@ export class MultiplayerGame extends Game {
         }
     }
 
-    async _onCardDrop(x, y, droppedOnTarget) {
+    async _onCardDrop(x, y, dropTarget) {
         try {
-            const { success, code, gameState } = await MultiplayerGame.#socket.timeout(1000).emitWithAck('card-drop', { x, y, droppedOnTarget });
+            const { success, code, gameState } = await MultiplayerGame.#socket.timeout(1000).emitWithAck('card-drop', { x, y, dropTarget });
             console.log('card-drop', success, code, gameState);
             if (!success) {
                 this._loadGameState(gameState);

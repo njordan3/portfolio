@@ -34,11 +34,8 @@ export const clientLoader = async () => {
 
     Card.width = dimensions.singleplayer.cardWidth;
     Card.height = dimensions.singleplayer.cardHeight;
-
     Stack.margin = dimensions.singleplayer.cardMargin;
-
     Hand.xOffset = dimensions.singleplayer.cardXOffset;
-
     Tableau.yOffset = dimensions.singleplayer.cardYOffset;
 
     Game.dimensions = Object.freeze(dimensions.singleplayer);
@@ -54,13 +51,15 @@ export default function DoubleSolitaire() {
     const [searchParams, setSearchParams] = useSearchParams();
     const isMultiplayer = useMemo(() => searchParams.get('multiplayer') !== null, [searchParams]);
     const [creatingGame, setCreatingGame] = useState(false);
-    const [inGame, setInGame] = useState(false);
+    const [playerType, setPlayerType] = useState(null);
     const [connected, setConnected] = useState(false);
     const [ready, setReady] = useState(false);
     const [games, setGames] = useState({});
     const [timer, setTimer] = useState(0);
     const [gameStarted, setGameStarted] = useState(false);
     const [done, setDone] = useState(false);
+    const [voteRestart, setVoteRestart] = useState(false);
+    const [lastGameStats, setLastGameStats] = useState(null);
 
     const setMode = useCallback((mode = '') => {
         const params = new URLSearchParams();
@@ -71,51 +70,89 @@ export default function DoubleSolitaire() {
         } else if (isMultiplayer && mode !== 'multiplayer') {
             setCreatingGame(false);
             setSearchParams(params);
-            if (!inGame) {
+            if (playerType !== null) {
                 MultiplayerGame.getInstance().disconnect()
             } else {
                 MultiplayerGame.getInstance().leaveGame()
                     .then(() => MultiplayerGame.getInstance().disconnect());
             }
         }
-    }, [isMultiplayer, setSearchParams, inGame]);
+    }, [isMultiplayer, setSearchParams, playerType]);
 
     const leaveGame = useCallback(() => {
         MultiplayerGame.getInstance().leaveGame();
     }, []);
 
     const toggleReady = useCallback(() => {
-        MultiplayerGame.getInstance().readyUp(!ready);
-        setReady(!ready);
+        setReady((prev) => {
+            MultiplayerGame.getInstance().handleToggleFlag(!prev, 'ready');
+            return !prev;
+        });
     }, [ready]);
 
-    
     const toggleDone = useCallback(() => {
-        MultiplayerGame.getInstance().done(!done);
-        setReady(!done);
-    }, [done])
+        setDone((prev) => {
+            MultiplayerGame.getInstance().handleToggleFlag(!prev, 'done');
+            return !prev;
+        });
+    }, [done]);
+
+    const toggleVoteRestart = useCallback(() => {
+        setVoteRestart((prev) => {
+            MultiplayerGame.getInstance().handleToggleFlag(!prev, 'voteRestart');
+            return !prev;
+        });
+    }, [voteRestart]);
 
     useEffect(() => {
         MultiplayerGame.on('create-game', () => { 
             setCreatingGame(false);
-            setInGame(true);
+            setPlayerType(Game.playerTypes.OWNER);
         });
-        MultiplayerGame.on('join-game', () => setInGame(true));
+        MultiplayerGame.on('join-game', (playerType) => {
+            setPlayerType(playerType);
+        });
         MultiplayerGame.on('leave-game', () => {
-            setInGame(false);
+            setLastGameStats(null);
+            setPlayerType(null);
             setReady(false);
             setDone(false);
             setGameStarted(false);
+            setVoteRestart(false);
         });
-        MultiplayerGame.on('game-end', () => {
-            setInGame(false);
+        MultiplayerGame.on('game-end', (stats) => {
+            setLastGameStats(stats);
+            setPlayerType(null);
             setReady(false);
             setDone(false);
             setGameStarted(false);
+            setVoteRestart(false);
+        });
+        MultiplayerGame.on('game-complete', (stats) => {
+            setLastGameStats(stats);
+            setReady(false);
+            setDone(false);
+            setGameStarted(false);
+            setVoteRestart(false);
+        });
+        MultiplayerGame.on('game-restart', (data) => {
+            setLastGameStats(null);
+            setVoteRestart(false);
         });
         
-        MultiplayerGame.on('ready-up', (ready) => setReady(ready));
-        MultiplayerGame.on('set-done', (done) => setDone(done));
+        MultiplayerGame.on('toggle-flag', ({ flag, toggle }) => {
+            switch(flag) {
+                case 'ready':
+                    setReady(toggle);
+                    break;
+                case 'done':
+                    setDone(toggle);
+                    break;
+                case 'voteRestart':
+                    setVoteRestart(toggle);
+                    break;
+            }
+        });
 
         MultiplayerGame.on('connect', () => setConnected(true));
         MultiplayerGame.on('disconnect', () => setConnected(false));
@@ -143,13 +180,13 @@ export default function DoubleSolitaire() {
         });
 
         MultiplayerGame.on('session', (data) => {
-            const { games, game, userReady, userDone } = data;
+            const { games, game, userReady, userDone, playerType } = data;
 
             if (games) {
                 setGames(games);
             }
             if (game) {
-                setInGame(true);
+                setPlayerType(playerType);
                 setReady(userReady);
                 setDone(userDone);
 
@@ -177,24 +214,49 @@ export default function DoubleSolitaire() {
                         <a href="/" target="_blank" className="no-style">Nicholas Jordan</a>
                     </div>
                 </div>
-                <button disabled={inGame} className={`btn ${!isMultiplayer ? 'btn-primary' : 'btn-default btn-ghost'}`} onClick={() => setMode()}>Solo</button>
+                <button disabled={playerType !== null} className={`btn ${!isMultiplayer ? 'btn-primary' : 'btn-default btn-ghost'}`} onClick={() => setMode()}>Solo</button>
                 <button className={`btn ${isMultiplayer ? 'btn-primary' : 'btn-default btn-ghost'}`} onClick={() => setMode('multiplayer')}>Multiplayer</button>
-
                 {isMultiplayer && (
                     <>
                         {timer ? (
                             <CountdownTimer className="bg-[var(--success-color)] text-[var(--invert-font-color)]" initialSeconds={timer} text="Starting In:" />
                         ) : (
-                            <UsernameInput className="mt-4" disabled={inGame} />
+                            <UsernameInput className="mt-4" disabled={playerType !== null} />
                         )}
                         <fieldset className="flex flex-col my-4 min-w-0 h-full">
                         {creatingGame && (
                             <GameSettings />
                         )}
-                        {!creatingGame && !inGame && (
+                        {!creatingGame && playerType === null && !lastGameStats && (
                             <GameBrowser games={games} />
                         )}
-                        {inGame && (
+                        {!creatingGame && lastGameStats && (
+                            <>
+                                <legend>Game Stats</legend>
+                                <div className="border border-font-color mb-4 py-[0.7em] px-[0.5em]">
+                                    {!lastGameStats.winner ? (
+                                        <p>You Tied</p>
+                                    ) : (
+                                        lastGameStats.stats[lastGameStats.winner].me ? (
+                                            <p>You Won!</p>
+                                        ) : (
+                                            <p>You Lost</p>
+                                        )
+                                    )}
+                                    <p></p>
+                                    {Object.keys(lastGameStats.stats).map((userId) => {
+                                        const { name, score, me } = lastGameStats.stats[userId];
+                                        return (
+                                            <p key={userId} className={`${!me ? 'text-[var(--secondary-color)]' : ''} my-1 text-xs`}>{name}: {score}</p>
+                                        );
+                                    })}
+                                </div>
+                                {playerType === null && (
+                                    <button className="btn btn-error" onClick={() => setLastGameStats(null)}>Hide Stats</button>
+                                )}
+                            </>
+                        )}
+                        {playerType !== null && !lastGameStats && (
                             <GameUsers />
                         )}
                         </fieldset>
@@ -204,31 +266,31 @@ export default function DoubleSolitaire() {
                     {isMultiplayer ? (
                         <>
                             {creatingGame && (
-                                <>
-                                    <button className="btn btn-error w-full" onClick={() => setCreatingGame(false)}>Cancel Game</button>
-                                </>
+                                <button className="btn btn-error" onClick={() => setCreatingGame(false)}>Cancel Game</button>
                             )}
-                            {!creatingGame && !inGame && (
-                                <>
-                                    <button className="btn btn-primary-invert" onClick={() => setCreatingGame(true)}>Create Game</button>
-                                </>
+                            {!creatingGame && playerType === null && (
+                                <button className="btn btn-primary-invert" onClick={() => setCreatingGame(true)}>Create Game</button>
                             )}
-                            {inGame && (
+                            {!creatingGame && playerType !== null && (
                                 <>
-                                    {gameStarted ? (
+                                    {gameStarted && !lastGameStats && (
                                         done ? (
                                             <button className="btn btn-primary-invert" onClick={toggleDone}>I'm Not Done</button>
                                         ) : (
-                                            <button className="btn btn-primary" onClick={toggleDone}>I'm Done</button>
+                                            <HoldButton className="btn btn-primary" onComplete={toggleDone} holdTime={0.5} text="I'm Done"/>
                                         )
-                                    ) : (
+                                    )}
+                                    {!gameStarted && !lastGameStats && (
                                         ready ? (
                                             <button className="btn btn-primary-invert" onClick={toggleReady} disabled={timer}>Unready</button>
                                         ) : (
-                                            <button className="btn btn-primary" onClick={toggleReady} disabled={timer}>Ready Up</button>
+                                            <HoldButton className="btn btn-primary" onComplete={toggleReady} disabled={timer} holdTime={0.5} text="Ready Up"/>
                                         )
                                     )}
-                                    <HoldButton className="btn btn-error" onComplete={leaveGame} text="Leave Game"/>
+                                    {!gameStarted && lastGameStats && (
+                                        <HoldButton className="btn btn-primary" onComplete={toggleVoteRestart} disabled={voteRestart} holdTime={0.5} text="Play Again?"/>
+                                    )}
+                                    <HoldButton className="btn btn-error mt-4" onComplete={leaveGame} text="Leave Game"/>
                                 </>
                             )}
                         </>

@@ -7,6 +7,7 @@ export default function HoldButton(props) {
         text,
         className = '',
         resetOnComplete = false,
+        disabled = false
     } = props;
 
     const interval = useMemo(() => 10/holdTime, [holdTime]);
@@ -85,6 +86,7 @@ export default function HoldButton(props) {
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            disabled={disabled}
         >
             <div 
                 className="absolute bottom-0 left-0 h-[5px] bg-[green]"

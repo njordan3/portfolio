@@ -9,7 +9,7 @@ export default function initWebSocketServer(httpServer) {
   
   io.on('connection', (socket) => {
     socket.user.clearDisconnectTimeout();
-    socket.user.setConnected(socket, true);
+    socket.user.toggleFlag(socket, 'connected', true);
   
     socket.on('create-game', ({ name, username }, callback) => {
       socket.user.name = username;
@@ -66,7 +66,7 @@ export default function initWebSocketServer(httpServer) {
       });
     });
 
-    socket.on('ready-up', ({ ready }, callback) => {
+    socket.on('toggle-flag', ({ flag, toggle }, callback) => {
       const events = [];
       const { sessionId, user } = socket;
       const { gameState } = user;
@@ -78,63 +78,49 @@ export default function initWebSocketServer(httpServer) {
           code: 'not-playing-game',
         });
       }
-      
-      const readyResult = user.readyUp(socket, ready);
-      const success = readyResult === ready;
+
+      const toggleResult = user.toggleFlag(socket, flag, toggle);
+      const success = toggleResult === toggle;
       const response = {
         success,
         events,
       };
       if (!success) {
-        response.code = 'unable-to-ready';
+        response.code = 'unable-to-toggle';
       }
+      callback(response);
 
-      if (ready && game.ready()) {
-        game.startStartTimer(() => {
-          game.start();
-          io.to(game.id).emit('game-start');
-        });
-        io.to(game.id).emit('game-start-timer', { time: game.startTime });
+      if (toggle) {
+        switch(flag) {
+          case 'ready':
+            if (game.ready()) {
+              game.startStartTimer(() => {
+                game.start();
+                io.to(game.id).emit('game-start');
+              });
+              io.to(game.id).emit('game-start-timer', { time: game.startTime });
+            }
+            break;
+          case 'done':
+            if (game.done()) {
+              game.started = false;
+              io.to(game.id).emit('game-complete', game.stats);
+            }
+            break;
+          case 'voteRestart':
+            if (game.restart()) {
+              io.to(game.id).emit('game-restart', game.toGameJSON());
+            }
+            break;
+        }
       }
-
-      return callback(response);
-    });
-
-    socket.on('set-done', ({ done }, callback) => {
-      const events = [];
-      const { sessionId, user } = socket;
-      const { gameState } = user;
-      const game = gameInstances.getGame(gameState?.gameId ?? null);
-      if (!game || !game.userIsPlaying(sessionId)) {
-        return callback({
-          success: false,
-          events,
-          code: 'not-playing-game',
-        });
-      }
-      
-      const doneResult = user.setDone(socket, done);
-      const success = doneResult === done;
-      const response = {
-        success,
-        events,
-      };
-      if (!success) {
-        response.code = 'unable-to-done';
-      }
-
-      if (done && game.done()) {
-        gameInstances.deleteGame(game.id);
-      }
-
-      return callback(response);
     });
 
     socket.on('card-pick', ({ x, y }) => {
       const { user } = socket;
       const { gameState } = user;
       const game = gameInstances.getGame(gameState?.gameId ?? null);
-      if (game && game.userIsPlaying(sessionId)) {
+      if (game && game.started && game.userIsPlaying(sessionId)) {
         gameState.pickTargetAtPoint(socket, x, y);
       }
     });
@@ -143,12 +129,12 @@ export default function initWebSocketServer(httpServer) {
       const { user } = socket;
       const { gameState } = user;
       const game = gameInstances.getGame(gameState?.gameId ?? null);
-      if (game && game.userIsPlaying(sessionId)) {
+      if (game && game.started && game.userIsPlaying(sessionId)) {
         gameState.dragCards(socket, x, y);
       }
     });
 
-    socket.on('card-drop', ({ x, y, droppedOnTarget }, callback) => {
+    socket.on('card-drop', ({ x, y, dropTarget }, callback) => {
       const result = {
         success: false,
         code: 'failed-to-drop-card',
@@ -159,7 +145,12 @@ export default function initWebSocketServer(httpServer) {
         const { gameState } = user;
         const game = gameInstances.getGame(gameState?.gameId ?? null);
         if (game) {
-          if (game.dropCardsAtPoint(socket, x, y) === droppedOnTarget) {
+          if (!game.started) {
+            result.code = 'game-not-started';
+            return callback(result);
+          }
+
+          if (game.dropCardsAtPoint(socket, x, y) === dropTarget) {
             return callback({
               success: true
             });
@@ -198,7 +189,7 @@ export default function initWebSocketServer(httpServer) {
     socket.on('disconnecting', () => {
       // Leave games and remove user sessions
       const { sessionId, user } = socket;
-      user.setConnected(socket, false);
+      socket.user.toggleFlag(socket, 'connected', false);
 
       user.setDisconnectTimeout((sessionId) => {
         const session = userSessions.getSession(sessionId);

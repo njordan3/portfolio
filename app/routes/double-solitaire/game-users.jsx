@@ -11,6 +11,7 @@ export default memo(function GameUsers() {
         setOwner(game.owner);
         setOpponent(game.opponent);
         setSpectators(game.spectators);
+        console.log('asd');
 
         MultiplayerGame.on('player-joined', (data) => setOpponent(data));
         MultiplayerGame.on('player-left', () => setOpponent(undefined));

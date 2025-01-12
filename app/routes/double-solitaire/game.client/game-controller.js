@@ -17,7 +17,7 @@ export class GameController {
     static setIsMultiplayer(isMultiplayer) {
         if (isMultiplayer && GameController.#gameStack.length === 1) {
             GameController.#gameStack.push(MultiplayerGame.getInstance());
-        } else if (GameController.#gameStack.length > 1) {
+        } else if (!isMultiplayer && GameController.#gameStack.length > 1) {
             GameController.#gameStack.pop();
         }
     }

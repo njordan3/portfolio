@@ -7,9 +7,25 @@ export class UserGameState {
         return this.#gameId;
     }
 
-    ready = false;
-    connected = true;
-    done = false;
+    flags = {
+        ready: false,
+        connected: true,
+        done: false,
+        voteRestart: false
+    };
+
+    get connected() {
+        return this.flags.connected;
+    }
+    get ready() {
+        return this.flags.ready;
+    }
+    get done() {
+        return this.flags.done;
+    }
+    get voteRestart() {
+        return this.flags.voteRestart;
+    }
 
     #tableau;        // 7 piles that make up the main table
     #hand;           // Cards in hand
@@ -72,6 +88,17 @@ export class UserGameState {
         for (let i = 0; i < this.#tableau.length; i++) {
             this.#tableau[i].flip();
         }
+    }
+
+    start() {
+        this.flags.ready = false;
+        this.flags.done = false;
+        this.flags.voteRestart = false;
+    }
+
+    restart(playerType) {
+        this.dealCards(playerType);
+        this.start();
     }
 
     pickTargetAtPoint(socket, x, y) {
@@ -182,7 +209,7 @@ export class UserGameState {
                         draggingCardsData: this.draggingCardsJSON()
                     });
                     this.resetDraggingCardsData();
-                    return true;
+                    return `tableau.${i}`;
                 }
             }
         }
@@ -238,9 +265,7 @@ export class UserGameState {
         }
 
         return {
-            ready: this.ready,
-            connected: this.connected,
-            done: this.done,
+            ...this.flags,
             ...this.getCards(),
             draggingCardsData: this.draggingCardsJSON(),
         };

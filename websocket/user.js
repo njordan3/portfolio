@@ -17,44 +17,35 @@ export default class User {
         return this.#id;
     }
 
+    get connected() {
+        return this?.gameState.flags.connected ?? false;
+    }
+    get ready() {
+        return this?.gameState.flags.ready ?? false;
+    }
+    get done() {
+        return this?.gameState.flags.done ?? false;
+    }
+    get voteRestart() {
+        return this?.gameState.flags.voteRestart ?? false;
+    }
+
     #disconnectTimeout;
 
     constructor() {
         this.#id = randomId();
     }
 
-    setConnected(socket, connected) {
-        if (this.gameState) {
-            if (connected !== this.gameState.connected) {   
-                socket.to(this.gameState.gameId).emit('player-update', { id: this.#id, connected });
+    toggleFlag(socket, flag, toggle) {
+        if (this.gameState && this.gameState.flags[flag] !== undefined) {
+            this.gameState.flags[flag] = toggle;
+            socket.to(this.gameState.gameId).emit('player-update', { id: this.#id, [flag]: toggle });
 
-                if (connected) {
-                    socket.join(this.gameState.gameId); // Rejoin game room if reconnecting
-                }
+            if (flag === 'connected' && toggle) {
+                socket.join(this.gameState.gameId); // Rejoin game room if reconnecting
             }
-            this.gameState.connected = connected;
-            
-            return connected;
-        }
-        
-        return null;
-    }
 
-    readyUp(socket, ready) {
-        if (this.gameState) {
-            this.gameState.ready = ready;
-            socket.to(this.gameState.gameId).emit('player-update', { id: this.#id, ready });
-            return ready;
-        }
-        
-        return null;
-    }
-
-    setDone(socket, done) {
-        if (this.gameState) {
-            this.gameState.done = done;
-            socket.to(this.gameState.gameId).emit('player-update', { id: this.#id, done });
-            return done;
+            return toggle;
         }
         
         return null;

@@ -30,7 +30,7 @@ export default class Game {
     #foundations;
 
     #stats = {}
-    get() {
+    get stats() {
         return this.#stats;
     }
 
@@ -54,12 +54,17 @@ export default class Game {
     }
 
     dropCardsAtPoint(socket, x, y) {
+        if (!this.started) {
+            return false;
+        }
+        
         const { sessionId, user } = socket;
         const { gameState } = user;
         if (this.userIsPlaying(sessionId) && gameState.draggingCardsData) {
             // Try dropping to user tableau. If dropped then return early
-            if (gameState.dropCardsAtPoint(socket, x, y)) {
-                return true;
+            const dropTarget = gameState.dropCardsAtPoint(socket, x, y);
+            if (dropTarget) {
+                return dropTarget;
             }
 
             const { stack, cards } = gameState.draggingCardsData;
@@ -71,7 +76,7 @@ export default class Game {
                         if ( this.#foundations[i].isValidDrop(cards[0].card) ) {
                             stack.up.pop(); // Dragged cards will always be from up
                             this.#foundations[i].push(cards[0].card, 'up');
-                            // this.#stats[user.id].score += 1;
+                            this.#stats[user.id].score += 1;
 
                             socket.to(this.#id).emit('player-card-drop', {
                                 id: socket.user.id,
@@ -80,7 +85,7 @@ export default class Game {
                             });
 
                             gameState.resetDraggingCardsData();
-                            return true;
+                            return `foundations.${i}`;
                         }
 
                         break;
@@ -171,6 +176,8 @@ export default class Game {
         const owner = userSessions.getSession(this.#owner)?.user;
         const opponent = userSessions.getSession(this.#opponent)?.user;
         if (owner && opponent) {
+            owner.gameState.start();
+            opponent.gameState.start();
             this.#stats[owner.id] = { name: owner.name, score: 0 };
             this.#stats[opponent.id] = { name: opponent.name, score: 0 };
         }
@@ -179,12 +186,40 @@ export default class Game {
 
     ready() {
         const userSessions = UserSessions.getInstance();
-        return userSessions.getSession(this.#owner)?.user.gameState?.ready && userSessions.getSession(this.#opponent)?.user.gameState?.ready;
+        return userSessions.getSession(this.#owner)?.user.ready && userSessions.getSession(this.#opponent)?.user.ready;
     }
 
     done() {
         const userSessions = UserSessions.getInstance();
-        return userSessions.getSession(this.#owner)?.user.gameState?.done && userSessions.getSession(this.#opponent)?.user.gameState?.done;
+        return userSessions.getSession(this.#owner)?.user.done && userSessions.getSession(this.#opponent)?.user.done;
+    }
+
+    restart() {
+        const userSessions = UserSessions.getInstance();
+        const owner = userSessions.getSession(this.#owner)?.user;
+        const opponent = userSessions.getSession(this.#opponent)?.user;
+        if ((owner && owner.voteRestart && !opponent) || (owner && owner.voteRestart && opponent && opponent.voteRestart)) {
+            if (owner) {
+                owner.gameState.restart(PlayerType.OWNER);
+            }
+            if (opponent) {
+                opponent.gameState.restart(PlayerType.OPPONENT);
+            }
+            
+            this.#stats = {};
+
+            const { stackGap, foundationX, foundationY } = MultiplayerDimensions.getInstance();
+
+            this.#foundations = Array.from({ length: 8 }, (e, i) => {
+                const x = foundationX + ((Card.width + stackGap) * i);
+                const y = foundationY;
+                return new Foundations(x, y, Card.width, Card.height);
+            });
+
+            return true;
+        }
+
+        return false;
     }
 
     startStartTimer(callback) {
