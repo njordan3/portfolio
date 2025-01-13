@@ -1,5 +1,5 @@
 import { SingleplayerGame } from './singleplayer-game';
-import { Card, Stack } from './internal';
+import { Card, Game, Stack } from './internal';
 import { MultiplayerGame } from './multiplayer-game';
 
 export class Hand extends Stack {
@@ -31,7 +31,7 @@ export class Hand extends Stack {
     }
 
     restart() {
-        if (this.down.length <= 0) {
+        if (this.down.length <= 0 && this.up.length > 0) {
             const length = this.up.length;
             for (let i = 0; i < length; i++) {
                 this.push(this.up.pop(), 'down');
@@ -43,6 +43,8 @@ export class Hand extends Stack {
     }
 
     reset() {
+        this.highlightIndex = null;
+
         let x = this.#upX;
         const indexClamp = (this.up.length > Hand.dealAmount ? this.up.length - Hand.dealAmount : 0);
         for (let i = 0; i < this.up.length; i++) {
@@ -56,6 +58,71 @@ export class Hand extends Stack {
                 y: this.#upY
             }
         }
+    }
+
+    renderForeground(context) {
+        if (this.highlightDownEmpty) {
+            context.fillStyle = 'rgb(98 196 255 / 50%)';
+            context.fillRect(this.position.x - Card.highlightWidth, this.position.y - Card.highlightWidth, Card.width + (Card.highlightWidth * 2), Card.height + (Card.highlightWidth * 2));
+        }
+
+        if (this.top('down')) {
+            context.drawImage(Game.cardBackImage.canvas, this.position.x, this.position.y);
+        }
+        
+        /**
+         * If not hovering then cards are drawn as normal.
+         * If hovering:
+         *  - Draw the cards before the hovered card first.
+         *  - Draw the border before the proceding cards.
+         *  - Draw the rest of the cards.
+         */
+        const { up } = this;
+        let beforeHighlight = up.length;
+        if (this.highlightIndex !== null && this.highlightIndex-1 > 0) {
+            beforeHighlight = this.highlightIndex;
+        }
+
+        for (let i = 0; i < beforeHighlight; i++) {
+            const { isDragging } = up[i];
+            if (isDragging) {
+                continue;
+            }
+
+            up[i].draw(context);
+        }
+
+        if (this.highlightIndex !== null && up[this.highlightIndex] && !up[this.highlightIndex].isDragging) {
+            const topCard = this.top('up');
+            const indexCard = up[this.highlightIndex];
+            const height = Card.height + Math.abs(topCard.position.y - indexCard.position.y);
+            const { position } = topCard.yFlipped ? topCard : indexCard;
+            
+            context.fillStyle = 'rgb(98 196 255 / 50%)';
+            context.fillRect(position.x - Card.highlightWidth, position.y - Card.highlightWidth, Card.width + (Card.highlightWidth * 2), height + (Card.highlightWidth * 2));
+        
+            for (let i = this.highlightIndex; i < up.length; i++) {
+                const { isDragging } = up[i];
+                if (isDragging) {
+                    continue;
+                }
+    
+                up[i].draw(context);
+            }
+        }
+    }
+
+    isPointIntersectBlock(x, y) {
+        const { position } = this;
+        const { handWidth } = Game.dimensions;
+        // Block width changes depending on whether the hand has up cards
+        const width = this.up.length > 0 ? handWidth : Card.width;
+        const xOffset = this._playerType === Game.playerTypes.OPPONENT && this.up.length > 0 ? -(handWidth - Card.width) : 0;
+
+        return (
+            x >= position.x + xOffset && x <= position.x + width + xOffset &&
+            y >= position.y && y <= position.y + Card.height
+        );
     }
 
     static createFromObject(object) {

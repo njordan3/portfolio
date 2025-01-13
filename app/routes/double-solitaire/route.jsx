@@ -214,7 +214,7 @@ export default function DoubleSolitaire() {
             <div id="left-sidebar">
                 <div className="terminal-logo">
                     <div className="logo terminal-prompt select-none">
-                        <a href="/" target="_blank" className="no-style">Nicholas Jordan</a>
+                        <a href="/" target="_self" className="no-style">Nicholas Jordan</a>
                     </div>
                 </div>
                 <button disabled={playerType !== null} className={`btn ${!isMultiplayer ? 'btn-primary' : 'btn-default btn-ghost'}`} onClick={() => setMode()}>Solo</button>

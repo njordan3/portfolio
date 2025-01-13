@@ -27,7 +27,7 @@ export class Hand extends Stack {
     }
 
     restart() {
-        if (this.down.length <= 0) {
+        if (this.down.length <= 0 && this.up.length > 0) {
             const length = this.up.length;
             for (let i = 0; i < length; i++) {
                 this.push(this.up.pop(), 'down');

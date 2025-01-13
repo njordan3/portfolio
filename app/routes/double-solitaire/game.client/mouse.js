@@ -3,6 +3,7 @@ export class Mouse {
     #oldPosition = { x: 0, y: 0 };
 
     button = false;
+    avoidPan = false;
 
     set position(position) {
         this.#oldPosition = this.#position;

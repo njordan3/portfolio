@@ -13,6 +13,9 @@ export class Stack {
     _width = 0;
     _height = 0;
     _playerType;
+
+    highlightDownEmpty = false;
+    highlightIndex = null;
     
     // Background render box
     #box;
@@ -48,7 +51,26 @@ export class Stack {
         return null;
     }
 
-    reset() {}
+    reset() {
+        this.highlightIndex = null;
+    }
+
+    renderForeground(context) {
+        if (this.highlightDownEmpty) {
+            context.fillStyle = 'rgb(98 196 255 / 50%)';
+            context.fillRect(this.position.x - Card.highlightWidth, this.position.y - Card.highlightWidth, Card.width + (Card.highlightWidth * 2), Card.height + (Card.highlightWidth * 2));
+        }
+        
+        const topCard = this.top('up');
+        if (topCard) {
+            if (this.highlightIndex !== null) {
+                context.fillStyle = 'rgb(98 196 255 / 50%)';
+                context.fillRect(topCard.position.x - Card.highlightWidth, topCard.position.y - Card.highlightWidth, Card.width + (Card.highlightWidth * 2), Card.height + (Card.highlightWidth * 2));
+            }
+
+            topCard.draw(context);
+        }
+    }
 
     renderBackground(context) {
         const { x, y } = this.originalPosition;
@@ -60,7 +82,8 @@ export class Stack {
                 height: Card.height + (2*Stack.margin)
             };
         }
-        context.strokeStyle = 'gold';
+        context.strokeStyle = 'rgb(255 215 0 / 50%)';
+        context.lineWidth = 3;
         context.strokeRect(this.#box.x, this.#box.y, this.#box.width, this.#box.height);
     }
 

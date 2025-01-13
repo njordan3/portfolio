@@ -3,6 +3,8 @@ import { Game } from "./internal";
 export class Card {
     static width;
     static height;
+
+    static highlightWidth = 3;
     
     position = { x: 0, y: 0 };
     #yFlipped = false;
@@ -44,7 +46,8 @@ export class Card {
         );
     }
 
-    draw(context) {
+    draw(context, opacity = 1) {
+        context.globalAlpha = opacity;
         context.drawImage(this.context.canvas, this.position.x, this.position.y);
     }
 

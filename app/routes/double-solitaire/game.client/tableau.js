@@ -28,6 +28,8 @@ export class Tableau extends Stack {
      * Gets called when dragged cards are dropped
      */
     reset() {
+        this.highlightIndex = null;
+
         this._position = { ...this.originalPosition };
         const position = { ...this.originalPosition };
         
@@ -66,6 +68,67 @@ export class Tableau extends Stack {
         }
         
         return false;
+    }
+
+    isPointIntersectBlock(x, y) {
+        const { position } = this;
+        const { tableauWidth } = Game.dimensions;
+
+        return (
+            x >= position.x && x <= position.x + tableauWidth &&
+            y >= position.y && y <= position.y + Card.height
+        );
+    }
+
+    renderForeground(context) {
+        const { down, up } = this;
+        if (down.length > 0) {
+            const downCard = down[0];
+            context.drawImage(Game.cardBackImage.canvas, downCard.position.x, downCard.position.y);
+        } else if (up.length <= 0 && this.highlightDownEmpty) {
+            context.fillStyle = 'rgb(98 196 255 / 50%)';
+            context.fillRect(this.position.x - Card.highlightWidth, this.position.y - Card.highlightWidth, Card.width + (Card.highlightWidth * 2), Card.height + (Card.highlightWidth * 2));
+        }
+
+        /**
+         * If not hovering then cards are drawn as normal.
+         * If hovering:
+         *  - Draw the cards before the hovered card first.
+         *  - Draw the border before the proceding cards.
+         *  - Draw the rest of the cards.
+         */
+        let beforeHighlight = up.length;
+        if (this.highlightIndex !== null && this.highlightIndex-1 > 0) {
+            beforeHighlight = this.highlightIndex;
+        }
+
+        for (let i = 0; i < beforeHighlight; i++) {
+            const { isDragging } = up[i];
+            if (isDragging) {
+                continue;
+            }
+
+            up[i].draw(context);
+        }
+
+        if (this.highlightIndex !== null && up[this.highlightIndex] && !up[this.highlightIndex].isDragging) {
+            const topCard = this.top('up');
+            const indexCard = up[this.highlightIndex];
+            const height = Card.height + Math.abs(topCard.position.y - indexCard.position.y);
+            const { position } = topCard.yFlipped ? topCard : indexCard;
+            
+            context.fillStyle = 'rgb(98 196 255 / 50%)';
+            context.fillRect(position.x - Card.highlightWidth, position.y - Card.highlightWidth, Card.width + (Card.highlightWidth * 2), height + (Card.highlightWidth * 2));
+        
+            for (let i = this.highlightIndex; i < up.length; i++) {
+                const { isDragging } = up[i];
+                if (isDragging) {
+                    continue;
+                }
+    
+                up[i].draw(context);
+            }
+        }
     }
 
     static createFromObject(object) {

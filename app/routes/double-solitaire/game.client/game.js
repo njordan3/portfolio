@@ -55,12 +55,15 @@ export class Game {
         centerY: 0,
         tableauX: 0,
         tableauY: 0,
+        tableauWidth: 0,
         handDownX: 0,
         handDownY: 0,
         handUpX: 0,
         handUpY: 0,
+        handWidth: 0,
         foundationX: 0,
         foundationY: 0,
+        foundationWidth: 0,
         startX: 0,
         startY: 0,
     };
@@ -90,7 +93,7 @@ export class Game {
                 for (let rank = 0; rank < 13; rank++) {
                     {
                         const canvas = new OffscreenCanvas(Card.width, Card.height);
-                        const context = canvas.getContext('2d', { alpha: false });
+                        const context = canvas.getContext('2d');
                         context.drawImage(
                             Game._cardSpriteSheet,
                             rank * Card.width, suit * Card.height,
@@ -147,7 +150,7 @@ export class Game {
         return Game.dimensions;
     }
 
-    renderForeground() {
+    renderForeground(drawDraggingCards = true) {
         const camera = Camera.getInstance();
         
         const { foreground } = camera.contexts;
@@ -155,51 +158,41 @@ export class Game {
 
         // Render only top cards
         for (let i = 0; i < foundations.length; i++) {
-            const topCard = foundations[i].top('up');
-
-            if (topCard) {
-                topCard.draw(foreground);
-            }
-        }
-
-        if (hand.top('down')) {
-            foreground.drawImage(Game.cardBackImage.canvas, hand.position.x, hand.position.y);
-        }
-
-        const draggingCards = [];
-
-        // Render only last 3 of hand up
-        const indexClamp = (hand.up.length > Hand.dealAmount ? hand.up.length - Hand.dealAmount : 0);
-        for (let i = indexClamp; i < hand.up.length; i++) {
-            const { isDragging } = hand.up[i];
-            if (isDragging) {
-                draggingCards.push(hand.up[i]);
-                continue;
-            }
-
-            hand.up[i].draw(foreground);
+            foundations[i].renderForeground(foreground);
         }
         
+        hand.renderForeground(foreground);
+        
         for (let i = 0; i < tableau.length; i++) {
-            if (tableau[i].down.length > 0) {
-                const downCard = tableau[i].down[0];
-                foreground.drawImage(Game.cardBackImage.canvas, downCard.position.x, downCard.position.y);
-            }
-
-            for (let j = 0; j < tableau[i].up.length; j++) {
-                const { isDragging } = tableau[i].up[j];
-                if (isDragging) {
-                    draggingCards.push(tableau[i].up[j]);
-                    continue;
-                }
-
-                tableau[i].up[j].draw(foreground);
-            }
+            tableau[i].renderForeground(foreground);
         }
 
         // Render dragging cards last so they appear on top
-        for (let i = 0; i < draggingCards.length; i++) {
-            draggingCards[i].draw(foreground);
+        if (drawDraggingCards) {
+            this.renderDraggingCards();
+        }
+    }
+
+    renderDraggingCards() {
+        const camera = Camera.getInstance();
+        const { foreground } = camera.contexts;
+
+        if (this._draggingCardsData) {
+            let indexCard = this._draggingCardsData.cards[0].card;
+            if (this._draggingCardsData.cards.length-1 > 0) {
+                indexCard = this._draggingCardsData.cards[this._draggingCardsData.cards.length-1].card;
+            }
+            const topCard = this._draggingCardsData.cards[0].card;
+            const height = Card.height + Math.abs(indexCard.position.y - topCard.position.y);
+
+            const { position } = topCard.yFlipped ? topCard : indexCard;
+            
+            foreground.fillStyle = 'rgb(98 196 255 / 50%)';
+            foreground.fillRect(position.x - Card.highlightWidth, position.y - Card.highlightWidth, Card.width + (Card.highlightWidth * 2), height + (Card.highlightWidth * 2));
+            
+            for (let i = this._draggingCardsData.cards.length-1; i >= 0; i--) {
+                this._draggingCardsData.cards[i].card.draw(foreground);
+            }
         }
     }
 
@@ -243,6 +236,11 @@ export class Game {
             return;
         }
 
+        const mouse = Mouse.getInstance();
+        if (this.hand.isPointIntersectBlock(x, y)) {
+            mouse.avoidPan = true;
+        }
+
         if ( this.hand.isPointIntersected(x, y) ) {
             this._onCardPick(x, y);
 
@@ -274,6 +272,10 @@ export class Game {
                 };
                 return;
             }
+        }
+
+        if (this.tableau[0].isPointIntersectBlock(x, y)) {
+            mouse.avoidPan = true;
         }
 
         for (let i = this.tableau.length-1; i >= 0; i--) {
@@ -393,15 +395,109 @@ export class Game {
             x: e.clientX - e.target.offsetLeft,
             y: e.clientY - e.target.offsetTop
         };
+
+        const { x, y } = camera.getBoardPosition(mouse.position.x, mouse.position.y);
+
+        let hoverChanged = false;
+        let handDownHovering = false;
+
+        // Check if we are hovering the top hand card
+        const oldHighlightDownEmpty = this.hand.highlightDownEmpty;
+        this.hand.highlightDownEmpty = false;
+        if (this.hand.isPointIntersected(x, y)) {
+            handDownHovering = true;
+            this.hand.highlightDownEmpty = true;
+        }
+        if (!this.hand.highlightDownEmpty !== oldHighlightDownEmpty) {
+            hoverChanged = true;
+        }
+
+        let handUpHovering = false;
+        const upHandIndex = this.hand.up.length-1;
+        if (upHandIndex >= 0) {
+            const oldHighlightIndex = this.hand.highlightIndex;
+            this.hand.highlightIndex = null;
+            const topCard = this.hand.up[upHandIndex];
+            if (topCard.isPointIntersected(x, y)) {
+                handUpHovering = true;
+                this.hand.highlightIndex = upHandIndex;
+            }
+
+            if (this.hand.highlightIndex !== oldHighlightIndex) {
+                hoverChanged = true;
+            }
+        }
+
+        // Check if we are hovering a card in the tableaus
+        let tableauHovering = false;
+        for (let i = 0; i < this.tableau.length; i++) {
+            const oldHighlightDownEmpty = this.tableau[i].highlightDownEmpty;
+            this.tableau[i].highlightDownEmpty = false;
+            if (this.tableau[i].isPointIntersected(x, y)) {
+                tableauHovering = true;
+                this.tableau[i].highlightDownEmpty = true;
+            }
+            if (!this.tableau[i].highlightDownEmpty !== oldHighlightDownEmpty) {
+                hoverChanged = true;
+            }
+
+            const oldHighlightIndex = this.tableau[i].highlightIndex;
+            this.tableau[i].highlightIndex = null;
+            for (let j = this.tableau[i].up.length-1; j >= 0; j--) {
+                const card = this.tableau[i].up[j];
+                if (card.isPointIntersected(x, y)) {
+                    tableauHovering = true;
+                    this.tableau[i].highlightIndex = j;
+                    break;
+                }
+            }
+
+            if (this.tableau[i].highlightIndex !== oldHighlightIndex) {
+                hoverChanged = true;
+            }
+        }
+
+        // Check if we are hovering a card in the tableaus
+        let foundationsHovering = false;
+        for (let i = 0; i < this.foundations.length; i++) {
+            const oldHighlightDownEmpty = this.foundations[i].highlightDownEmpty;
+            this.foundations[i].highlightDownEmpty = false;
+            if (this.foundations[i].isPointIntersected(x, y)) {
+                foundationsHovering = true;
+                this.foundations[i].highlightDownEmpty = true;
+            }
+            if (!this.foundations[i].highlightDownEmpty !== oldHighlightDownEmpty) {
+                hoverChanged = true;
+            }
+
+            const oldHighlightIndex = this.foundations[i].highlightIndex;
+            this.foundations[i].highlightIndex = null;
+
+            if (!foundationsHovering) {
+                const topCardIndex = this.foundations[i].up.length-1;
+                if (topCardIndex >= 0) {
+                    const topCard = this.foundations[i].up[topCardIndex];
+                    if (topCard.isPointIntersected(x, y)) {
+                        foundationsHovering = true;
+                        this.foundations[i].highlightIndex = topCardIndex;
+                    }
+                }
+            }
+
+            if (this.foundations[i].highlightIndex !== oldHighlightIndex) {
+                hoverChanged = true;
+            }
+        }
+
+        if (hoverChanged) {
+            camera.forceUpdate();
+        }
     
         if (mouse.button) {
             if (e.type === 'mousedown') {
-                const { x, y } = camera.getBoardPosition(mouse.position.x, mouse.position.y);
                 this.#pickTargetAtPoint(x, y);
             } else if (e.type === 'mousemove') {
                 if (this._draggingCardsData !== null) {
-                    const { x, y } = camera.getBoardPosition(mouse.position.x, mouse.position.y);
-
                     const { cards } = this._draggingCardsData;
                     for (let i = 0; i < cards.length; i++) {
                         cards[i].card.position.x = x - cards[i].dragOffset.x;
@@ -410,20 +506,38 @@ export class Game {
                     
                     camera.forceUpdate();
                     this._onCardMove(x, y);
-                } else {
+                } else if (!mouse.avoidPan) {
                     const x = mouse.position.x - mouse.oldPosition.x;
                     const y = mouse.position.y - mouse.oldPosition.y;
                     camera.pan({ x, y });
                 }
             } else if (e.type === 'mouseup' && this._draggingCardsData !== null) {
-                const { x, y } = camera.getBoardPosition(mouse.position.x, mouse.position.y);
                 const dropTarget = this.#dropCardsAtPoint(x, y);
                 this._onCardDrop(x, y, dropTarget);
             }
         }
 
+        // Update cursor based on what is happening
+        const { foreground } = camera.contexts;
+        if (this._draggingCardsData !== null) {
+            foreground.canvas.style.cursor = 'grabbing';
+        } else if (handUpHovering || handDownHovering || tableauHovering || foundationsHovering) {
+            if (!this._started || foundationsHovering) {
+                foreground.canvas.style.cursor = 'no-drop';
+            } else if (handDownHovering) {
+                foreground.canvas.style.cursor = 'pointer';
+            } else {
+                foreground.canvas.style.cursor = 'grab';
+            }
+        } else if (mouse.button && !mouse.avoidPan) {
+            foreground.canvas.style.cursor = 'move';
+        } else {
+            foreground.canvas.style.cursor = 'auto';
+        }
+
         if (e.type === 'mouseup' || e.type === 'mouseout') {
             mouse.button = false;
+            mouse.avoidPan = false;
         }
     }
 

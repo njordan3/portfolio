@@ -97,7 +97,7 @@ export class MultiplayerGame extends Game {
                 const { score } = data[userId];
                 if (!winner || score > data[winner].score) {
                     winner = userId;
-                } else {
+                } else if (data[winner].score === score) {
                     winner = null;  // tie
                 }
                 data[userId].me = userId === MultiplayerGame.#socket.userId;
@@ -488,7 +488,9 @@ export class MultiplayerGame extends Game {
         };
     }
 
-    renderForeground() {
+    renderForeground(drawDraggingCards = false) {
+        super.renderForeground(drawDraggingCards);
+
         const camera = Camera.getInstance();
         const { foreground } = camera.contexts;
 
@@ -507,58 +509,36 @@ export class MultiplayerGame extends Game {
         }
 
         for (let i = 0; i < deckRenders.length; i++) {
-            const { tableau, hand } = deckRenders[i];
+            const { tableau, hand, draggingCardsData } = deckRenders[i];
+
+            hand.renderForeground(foreground);
+        
+            for (let i = 0; i < tableau.length; i++) {
+                tableau[i].renderForeground(foreground);
+            }
 
             if (hand.top('down')) {
                 foreground.drawImage(Game.cardBackImage.canvas, hand.position.x, hand.position.y);
             }
     
-            const draggingCards = [];
-    
-            // Render only last 3 of hand up
-            const indexClamp = (hand.up.length > Hand.dealAmount ? hand.up.length - Hand.dealAmount : 0);
-            for (let j = indexClamp; j < hand.up.length; j++) {
-                const { isDragging } = hand.up[j];
-                if (isDragging) {
-                    draggingCards.push(hand.up[j]);
-                    continue;
-                }
-    
-                hand.up[j].draw(foreground);
-            }
-            
-            for (let j = 0; j < tableau.length; j++) {
-                if (tableau[j].down.length > 0) {
-                    const downCard = tableau[j].down[0];
-                    foreground.drawImage(Game.cardBackImage.canvas, downCard.position.x, downCard.position.y);
-                }
-    
-                for (let k = 0; k < tableau[j].up.length; k++) {
-                    const { isDragging } = tableau[j].up[k];
-                    if (isDragging) {
-                        draggingCards.push(tableau[j].up[k]);
-                        continue;
+            // Render dragging cards last so they appear on top
+            if (draggingCardsData) {
+                for (let j = 0; j < draggingCardsData.cards.length; j++) {
+                    const draggingCard = draggingCardsData.cards[j].card;
+                    if (draggingCard.targetPosition) {
+                        draggingCard.targetPosition;
+                        draggingCard.position.x += (draggingCard.targetPosition.x - draggingCard.position.x) * 0.10;
+                        draggingCard.position.y += (draggingCard.targetPosition.y - draggingCard.position.y) * 0.10;
+                        Camera.getInstance().forceUpdate();
                     }
     
-                    tableau[j].up[k].draw(foreground);
+                    draggingCard.draw(foreground, 0.8);
                 }
             }
-    
-            // Render dragging cards last so they appear on top
-            for (let j = 0; j < draggingCards.length; j++) {
-                if (draggingCards[j].targetPosition) {
-                    draggingCards[j].targetPosition;
-                    draggingCards[j].position.x += (draggingCards[j].targetPosition.x - draggingCards[j].position.x) * 0.10;
-                    draggingCards[j].position.y += (draggingCards[j].targetPosition.y - draggingCards[j].position.y) * 0.10;
-                    Camera.getInstance().forceUpdate();
-                }
-
-                draggingCards[j].draw(foreground);
-            }
-            
         }
 
-        super.renderForeground();
+        // Render dragging cards last so they appear on top
+        this.renderDraggingCards();
     }
 
     renderBackground() {
@@ -779,7 +759,7 @@ export class MultiplayerGame extends Game {
     #cardMoveTimeout;
     _onCardMove(x, y) {
         if (!this.#cardMoveTimeout) {
-            MultiplayerGame.#socket.emit('card-move', { x, y });
+            MultiplayerGame.#socket.volatile.emit('card-move', { x, y });
             this.#cardMoveTimeout = setTimeout(() => {
                 this.#cardMoveTimeout = undefined;
             }, 41); // ~24 updates/s throttle
