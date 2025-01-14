@@ -178,7 +178,7 @@ export class UserGameState {
                     cards[i].card.position.y = y - cards[i].dragOffset.y;
                 }
     
-                socket.to(this.#gameId).emit('player-card-drag', { id: socket.user.id, position: { x, y } });
+                socket.to(this.#gameId).volatile.emit('player-card-drag', { id: socket.user.id, position: { x, y } });
             }
 
             this.#cardMoveTimeout = setTimeout(() => {

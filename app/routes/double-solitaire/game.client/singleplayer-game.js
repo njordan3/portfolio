@@ -2,6 +2,10 @@ import { generateRandomInt } from '@/utils/misc';
 import { Game, Camera, Card, Hand, Tableau, Foundations } from './internal';
 
 export class SingleplayerGame extends Game {
+    #score = 0;
+    
+    static #eventCallbacks = {};
+    
     constructor() {
         super();
 
@@ -49,7 +53,10 @@ export class SingleplayerGame extends Game {
                     for (let j = 0; j < foundations[i].up.length; j++) { // Foundations only have up cards
                         const { suit, rank } = foundations[i].up[j];
                         newFoundation.push(new Card(suit, rank), 'up');
+                        this.#score++;
                     }
+
+                    SingleplayerGame.#doEvent('score', this.#score);
 
                     return newFoundation;
                 });
@@ -104,6 +111,8 @@ export class SingleplayerGame extends Game {
             const y = foundationY;
             return new Foundations(x, y, Card.width, Card.height);
         });
+
+        this.#score = 0;
     }
 
     deal() {
@@ -131,11 +140,26 @@ export class SingleplayerGame extends Game {
         Camera.getInstance().forceUpdate();
     }
 
+    _onFoundationsDrop() {
+        this.#score++;
+        SingleplayerGame.#doEvent('score', this.#score);
+    }
+
+    static on(event, callback) {
+        SingleplayerGame.#eventCallbacks[event] = callback;
+    }
+
+    static #doEvent(event, ...args) {
+        if (SingleplayerGame.#eventCallbacks[event]) {
+            SingleplayerGame.#eventCallbacks[event](...args);
+        }
+    }
+
     save() {
-        // localStorage.setItem('singleplayerGame', JSON.stringify({
-        //     tableau: this.tableau,
-        //     foundations: this.foundations,
-        //     hand: this.hand,
-        // }));
+        localStorage.setItem('singleplayerGame', JSON.stringify({
+            tableau: this.tableau,
+            foundations: this.foundations,
+            hand: this.hand,
+        }));
     }
 }

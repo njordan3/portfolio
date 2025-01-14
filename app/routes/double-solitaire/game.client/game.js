@@ -224,6 +224,8 @@ export class Game {
 
     _onCardMove(x, y) {}
 
+    _onFoundationsDrop() {}
+
     async _onCardDrop(x, y, dropTarget) {}
 
     /**
@@ -344,6 +346,7 @@ export class Game {
                     if ( this.foundations[i].isValidDrop(cards[0].card) ) {
                         stack.up.pop(); // Dragged cards will always be from up
                         this.foundations[i].push(cards[0].card, 'up');
+                        this._onFoundationsDrop();
     
                         this._resetDraggingCardsData();
                         return `foundations.${i}`;

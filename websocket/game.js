@@ -207,12 +207,20 @@ export default class Game {
         const userSessions = UserSessions.getInstance();
         const owner = userSessions.getSession(this.#owner)?.user;
         const opponent = userSessions.getSession(this.#opponent)?.user;
-        if (owner?.done && opponent?.done) {
-            owner.gameState.flags.done = false;
-            opponent.gameState.flags.done = false;
-            this.#ended = true;
-            return true;
+
+        if (owner && opponent) {
+            const ownerScore = this.#stats[owner.id].score;
+            const opponentScore = this.#stats[opponent.id].score;
+
+            if ((owner.done && opponent.done) || (ownerScore === 52 && opponentScore === 52)) {
+                owner.gameState.flags.done = false;
+                opponent.gameState.flags.done = false;
+                this.#ended = true;
+                this.started = false;
+                return true;
+            }
         }
+        
 
         return false;
     }

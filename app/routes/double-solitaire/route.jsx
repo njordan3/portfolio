@@ -49,6 +49,8 @@ export const clientLoader = async () => {
 
 export default function DoubleSolitaire() {
     const imagesPromise = useLoaderData();
+    const [singleplayerScore, setSingleplayerScore] = useState(0);
+
     const [searchParams, setSearchParams] = useSearchParams();
     const isMultiplayer = useMemo(() => searchParams.get('multiplayer') !== null, [searchParams]);
     const [creatingGame, setCreatingGame] = useState(false);
@@ -106,6 +108,10 @@ export default function DoubleSolitaire() {
     }, [voteRestart]);
 
     useEffect(() => {
+        SingleplayerGame.on('score', (score) => {
+            setSingleplayerScore(score);
+        });
+
         MultiplayerGame.on('create-game', () => { 
             setCreatingGame(false);
             setPlayerType(Game.playerTypes.OWNER);
@@ -220,6 +226,13 @@ export default function DoubleSolitaire() {
                 </div>
                 <button disabled={playerType !== null} className={`btn ${!isMultiplayer ? 'btn-primary' : 'btn-default btn-ghost'}`} onClick={() => setMode()}>Solo</button>
                 <button className={`btn ${isMultiplayer ? 'btn-primary' : 'btn-default btn-ghost'}`} onClick={() => setMode('multiplayer')}>Multiplayer</button>
+                {playerType === null && (
+                    <fieldset className="flex flex-col mt-4 min-w-0">
+                        <legend>Singleplayer Stats</legend>
+                        <p className={singleplayerScore !== 52 ? 'invisible' : 'blink'}>You Win!</p>
+                        <p className="my-0 text-xs text-[var(--primary-color)]">Score: {singleplayerScore}</p>
+                    </fieldset>
+                )}
                 {isMultiplayer && (
                     <>
                         {timer ? (
@@ -245,7 +258,7 @@ export default function DoubleSolitaire() {
                                         <p>You Tied</p>
                                     ) : (
                                         lastGameStats.stats[lastGameStats.winner].me ? (
-                                            <p>You Won!</p>
+                                            <p className="blink">You Won!</p>
                                         ) : (
                                             <p>You Lost</p>
                                         )
@@ -269,7 +282,7 @@ export default function DoubleSolitaire() {
                     </>
                 )}
                 <div className='mt-auto mb-4 flex justify-center flex-col'>
-                    {isMultiplayer ? (
+                    {isMultiplayer && (
                         <>
                             {creatingGame && (
                                 <button className="btn btn-error" onClick={() => setCreatingGame(false)}>Cancel Game</button>
@@ -300,15 +313,14 @@ export default function DoubleSolitaire() {
                                 </>
                             )}
                         </>
-                    ) : (
-                        <>
-                            <HoldButton
-                                className="btn btn-primary-invert"
-                                onComplete={() => SingleplayerGame.getInstance().deal()}
-                                resetOnComplete={true}
-                                text="Restart Game"
-                            />
-                        </>
+                    )}
+                    {playerType === null && (
+                        <HoldButton
+                            className="btn btn-primary-invert mt-4"
+                            onComplete={() => SingleplayerGame.getInstance().deal()}
+                            resetOnComplete={true}
+                            text="Restart Game"
+                        />
                     )}
                 </div>
             </div>
