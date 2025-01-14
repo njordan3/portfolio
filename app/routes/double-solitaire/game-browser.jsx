@@ -134,7 +134,7 @@ export default function GameBrowser(props) {
                 </div>
             )}
             {hasGames ? (
-                <ul className="game-browser my-0 flex-auto h-0 overflow-y-auto">
+                <ul className="scroll-container my-0 flex-auto h-0 overflow-y-auto">
                     {Object.keys(games).map((gameId) => (
                         <GameItem
                             key={gameId}

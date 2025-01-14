@@ -5,6 +5,7 @@ import { randomId } from "./utils.js";
 export default class GameInstances {
     #instances = new Map();
     static io;
+    static maxGames = 10;
 
     static #instance;
 
@@ -17,6 +18,10 @@ export default class GameInstances {
     }
 
     createGame(socket, name) {
+      if (this.#instances.size >= GameInstances.maxGames) {
+        return null;
+      }
+
       const instanceId = randomId();
       const game = new Game(socket, instanceId, name);
       if (!game.join(socket)) {

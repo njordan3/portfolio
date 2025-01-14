@@ -14,6 +14,7 @@ import UsernameInput from './username-input';
 import GameUsers from './game-users';
 import { Card, Game, Hand, Stack, Tableau } from './game.client/internal';
 import CountdownTimer, { links as CountdownTimerLinks } from '@/components/countdown-timer';
+import { GameLogs } from './game-logs';
 
 export const links = () => [
     {
@@ -316,7 +317,11 @@ export default function DoubleSolitaire() {
                     <Board/>
                 </Await>
             </Suspense>
-            <div id="right-sidebar"></div>
+            <div id="right-sidebar">
+                <fieldset className="flex flex-col h-full min-w-0 bg-black select-none p-2">
+                    <GameLogs />
+                </fieldset>
+            </div>
             <div id="footer"></div>
         </div>
     );

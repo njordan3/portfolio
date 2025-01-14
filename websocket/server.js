@@ -13,82 +13,92 @@ export default function initWebSocketServer(httpServer) {
   
     socket.on('create-game', ({ name, username }, callback) => {
       socket.user.name = username;
-      const events = [];
+      const codes = [];
   
       if (gameInstances.leaveGame(socket)) {
-        events.push('left-game');
+        codes.push('left-game');
       }
-  
+
       const newGame = gameInstances.createGame(socket, name);
-      console.log('created game', gameInstances.toJSON());
+      if (newGame) {
+        console.log('created game', gameInstances.toJSON());
+        codes.push('created-game');
+        return callback({
+          success: true,
+          game: newGame.toGameJSON(),
+          codes,
+        });
+      }
+
+      codes.push(newGame === null ? 'unable-to-create-game:max-games' : 'unable-to-create-game');
+      
       callback({
-        success: true,
-        game: newGame.toGameJSON(),
-        events,
+        success: false,
+        codes,
       });
     });
   
     socket.on('join-game', ({ gameId, username }, callback) => {
       socket.user.name = username;
-      const events = [];
+      const codes = [];
   
       if (gameInstances.leaveGame(socket)) {
-        events.push('left-game');
+        codes.push('left-game');
       }
 
       const joinedGame = gameInstances.joinGame(socket, gameId);
       if (!joinedGame) {
+        codes.push(joinedGame === null ? 'game-not-found' : 'failed-to-join-game');
         return callback({
           success: false,
-          code: joinedGame === null ? 'game-not-found' : 'unable-to-join',
-          events,
+          codes,
         });
       }
 
-      return callback({
+      codes.push('joined-game');
+      callback({
         success: true,
         game: joinedGame.toGameJSON(),
-        events,
+        codes,
       });
     });
   
     socket.on('leave-game', (callback) => {
-      const events = [];
+      const codes = [];
       if (gameInstances.leaveGame(socket)) {
-        events.push('left-game');
+        codes.push('left-game');
       }
       console.log('left game', gameInstances.toJSON());
 
       // Leave game is always deemed successful
-      return callback({
+      callback({
         success: true,
-        events,
+        codes,
       });
     });
 
     socket.on('toggle-flag', ({ flag, toggle }, callback) => {
-      const events = [];
       const { sessionId, user } = socket;
       const { gameState } = user;
+      const codes = [];
       const game = gameInstances.getGame(gameState?.gameId ?? null);
       if (!game || !game.userIsPlaying(sessionId)) {
+        codes.push('not-playing-game');
         return callback({
           success: false,
-          events,
-          code: 'not-playing-game',
+          codes,
         });
       }
 
       const toggleResult = user.toggleFlag(socket, flag, toggle);
       const success = toggleResult === toggle;
-      const response = {
-        success,
-        events,
-      };
-      if (!success) {
-        response.code = 'unable-to-toggle';
+      if (success) {
+        codes.push('unable-to-toggle');
       }
-      callback(response);
+      callback({
+        success,
+        codes
+      });
 
       if (toggle) {
         switch(flag) {
@@ -135,9 +145,9 @@ export default function initWebSocketServer(httpServer) {
     });
 
     socket.on('card-drop', ({ x, y, dropTarget }, callback) => {
+      const codes = [];
       const result = {
         success: false,
-        code: 'failed-to-drop-card',
       }
 
       try {
@@ -146,7 +156,7 @@ export default function initWebSocketServer(httpServer) {
         const game = gameInstances.getGame(gameState?.gameId ?? null);
         if (game) {
           if (!game.started) {
-            result.code = 'game-not-started';
+            codes.push('game-not-started');
             return callback(result);
           }
 
@@ -166,23 +176,30 @@ export default function initWebSocketServer(httpServer) {
         console.error(e);
       }
 
+      codes.push('failed-to-drop-card');
+
       callback(result);
     });
 
     socket.on('request-game-state', (callback) => {
       const { user } = socket;
       const { gameState } = user;
+      const codes = [];
       const game = gameInstances.getGame(gameState?.gameId ?? null);
       if (game) {
+        codes.push('fresh-game-state');
         return callback({
           success: true,
+          codes,
           gameState: game.getCards(socket)
         });
       }
 
+      codes.push('failed-to-get-game-state');
+
       callback({
         success: false,
-        code: 'failed-to-get-game-state'
+        codes,
       });
     });
   

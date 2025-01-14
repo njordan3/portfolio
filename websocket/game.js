@@ -4,6 +4,8 @@ import UserSessions from './user-sessions.js';
 import { sanitizeString } from './utils.js';
 
 export default class Game {
+    static maxSpectators = 10;
+
     #id;
     get id() {
         return this.#id;
@@ -113,6 +115,9 @@ export default class Game {
         socket.join(this.#id);
 
         if (this.#opponent) {
+            if (this.#spectators.size >= Game.maxSpectators) {
+                return false;
+            }
             socket.to(this.#id).emit('user-joined', user);
             this.#spectators.add(sessionId);
         } else {

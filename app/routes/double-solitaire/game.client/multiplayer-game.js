@@ -51,17 +51,14 @@ export class MultiplayerGame extends Game {
 
         MultiplayerGame.#socket.on('connect', (data) => {
             console.log('connect', data);
+            MultiplayerGame.#doEvent('log', ['connected']);
             MultiplayerGame.#doEvent('connect', data);
         });
 
         MultiplayerGame.#socket.on('disconnect', (data) => {
             console.log('disconnect', data);
+            MultiplayerGame.#doEvent('log', ['disconnected']);
             MultiplayerGame.#doEvent('disconnect', data);
-        });
-
-        MultiplayerGame.#socket.on('error', (data) => {
-            console.log('error', data);
-            MultiplayerGame.#doEvent('error', data);
         });
 
         MultiplayerGame.#socket.on('update-game-browser', (data) => {
@@ -116,6 +113,7 @@ export class MultiplayerGame extends Game {
             }
             this.unloadGame();
             MultiplayerGame.#doEvent('game-end', data);
+            MultiplayerGame.#doEvent('log', ['game-ended']);
         });
         
         MultiplayerGame.#socket.on('game-complete', (data) => {
@@ -140,23 +138,21 @@ export class MultiplayerGame extends Game {
             MultiplayerGame.#doEvent('owner-update', userUpdate);
             MultiplayerGame.#doEvent('opponent-update', userUpdate);
             MultiplayerGame.#doEvent('game-complete', data);
-        });
-
-        MultiplayerGame.#socket.on('game', (data) => {
-            console.log('game-complete', data);
-            MultiplayerGame.#doEvent('game-complete', data);
+            MultiplayerGame.#doEvent('log', ['game-completed']);
         });
 
         MultiplayerGame.#socket.on('user-joined', (data) => {
             console.log('user-joined', data);
             this.#spectators[data.id] = data;
             MultiplayerGame.#doEvent('user-joined', data);
+            MultiplayerGame.#doEvent('log', ['user-joined-game']);
         });
 
         MultiplayerGame.#socket.on('user-left', (data) => {
             console.log('user-left', data);
             delete this.#spectators[data.id];
             MultiplayerGame.#doEvent('user-left', data);
+            MultiplayerGame.#doEvent('log', ['user-left-game']);
         });
 
         MultiplayerGame.#socket.on('player-joined', (data) => {
@@ -166,6 +162,7 @@ export class MultiplayerGame extends Game {
             this.#opponent.tableau = Array.from({ length: 7 }, (e, i) => Tableau.createFromObject(data.tableau[i]));
             Camera.getInstance().forceUpdate();
             MultiplayerGame.#doEvent('player-joined', data);
+            MultiplayerGame.#doEvent('log', ['player-joined-game']);
         });
 
         MultiplayerGame.#socket.on('player-left', (data) => {
@@ -173,6 +170,7 @@ export class MultiplayerGame extends Game {
             this.#opponent = undefined;
             Camera.getInstance().forceUpdate();
             MultiplayerGame.#doEvent('player-left');
+            MultiplayerGame.#doEvent('log', ['player-left-game']);
         });
 
         MultiplayerGame.#socket.on('player-update', (data) => {
@@ -215,6 +213,7 @@ export class MultiplayerGame extends Game {
             MultiplayerGame.#doEvent('owner-update', userUpdate);
             MultiplayerGame.#doEvent('opponent-update', userUpdate);
             MultiplayerGame.#doEvent('game-start');
+            MultiplayerGame.#doEvent('log', ['game-started']);
         });
 
         MultiplayerGame.#socket.on('game-start-timer', (data) => {  
@@ -263,7 +262,6 @@ export class MultiplayerGame extends Game {
                     const index = [...stackIndex, 'up', cards[i].index];
                     const card = isOwner ? this._getObjectAtIndex(index, this.#owner) : this._getObjectAtIndex(index, this.#opponent);
                     if (!card) {
-                        // fetch data from server?
                         break;
                     }
                     card.isDragging = true;
@@ -612,10 +610,11 @@ export class MultiplayerGame extends Game {
 
     async createGame(name) {
         const { sessionId } = MultiplayerGame.#socket.auth;
+        let logs = [];
         if (sessionId) {
             try {
-                const { success, code, events, game } = await MultiplayerGame.#socket.timeout(3000).emitWithAck('create-game', { name, username: this.#username });
-                console.log('create-game', { success, code, events, game });
+                const { success, codes, game } = await MultiplayerGame.#socket.timeout(3000).emitWithAck('create-game', { name, username: this.#username });
+                console.log('create-game', { success, codes, game });
                 if (success) {
                     this.#owner = game.owner;
 
@@ -627,20 +626,25 @@ export class MultiplayerGame extends Game {
                     Camera.getInstance().recenter();
                     MultiplayerGame.#doEvent('create-game');
                 }
+
+                logs = [...logs, ...codes];
             } catch (e) {
-                // the server did not acknowledge the event
+                logs.push('failed-to-create-game');
             }
+        } else {
+            logs.push('missing-session-id');
         }
-         
-        return false;
+
+        MultiplayerGame.#doEvent('log', logs);
     }
 
     async joinGame(gameId) {
         const { sessionId } = MultiplayerGame.#socket.auth;
+        let logs = [];
         if (sessionId) {
             try {
-                const { success, code, events, game } = await MultiplayerGame.#socket.timeout(3000).emitWithAck('join-game', { gameId, username: this.#username });
-                console.log('join-game', { success, code, events, game });
+                const { success, codes, game } = await MultiplayerGame.#socket.timeout(3000).emitWithAck('join-game', { gameId, username: this.#username });
+                console.log('join-game', { success, codes, game });
                 if (success) {
                     this.loadGame(game);
 
@@ -652,39 +656,47 @@ export class MultiplayerGame extends Game {
                     }
                     MultiplayerGame.#doEvent('join-game', playerType);
                 }
+
+                logs = [...logs, ...codes];
             } catch (e) {
-                // the server did not acknowledge the event
+                logs.push('failed-to-join-game');
             }
+        } else {
+            logs.push('missing-session-id');
         }
          
-        return false;
+        MultiplayerGame.#doEvent('log', logs);
     }
 
     async leaveGame() {
         const { sessionId } = MultiplayerGame.#socket.auth;
+        let logs = [];
         if (sessionId) {
             try {
-                const { success, events } = await MultiplayerGame.#socket.timeout(3000).emitWithAck('leave-game');
-                console.log('leave-game', { success, events });
+                const { success, codes } = await MultiplayerGame.#socket.timeout(3000).emitWithAck('leave-game');
+                console.log('leave-game', { success, codes });
                 if (success) {
                     this.unloadGame();
                     Camera.getInstance().recenter();
                     MultiplayerGame.#doEvent('leave-game');
                 }
-            } catch (e) {
-                // the server did not acknowledge the event
-            }
+
+                logs = [...logs, ...codes];
+            } catch (e) {}
+        } else {
+            logs.push('missing-session-id');
         }
-        
-        return false;
+
+        MultiplayerGame.#doEvent('log', logs);
     }
 
     async handleToggleFlag(toggle, flag) {
         const { sessionId } = MultiplayerGame.#socket.auth;
+        let logs = [];
         if (sessionId && this.isPlayer()) {
             try {
-                const { success, code, events } = await MultiplayerGame.#socket.timeout(3000).emitWithAck('toggle-flag', { flag, toggle });
-                console.log('toggle-flag', { success, code, events });
+                const { success, codes } = await MultiplayerGame.#socket.timeout(3000).emitWithAck('toggle-flag', { flag, toggle });
+                console.log('toggle-flag', { success, codes });
                 if (!success) {
                     toggle = !toggle;
                 }
@@ -702,9 +714,11 @@ export class MultiplayerGame extends Game {
             }
             
             MultiplayerGame.#doEvent('toggle-flag', { flag, toggle });
+        } else {
+            logs.push('missing-session-id');
         }
-         
-        return false;
+
+        MultiplayerGame.#doEvent('log', logs);
     }
 
     loadGame(game) {
@@ -767,31 +781,41 @@ export class MultiplayerGame extends Game {
     }
 
     async _onCardDrop(x, y, dropTarget) {
+        let logs = [];
         try {
-            const { success, code, gameState } = await MultiplayerGame.#socket.timeout(1000).emitWithAck('card-drop', { x, y, dropTarget });
-            console.log('card-drop', success, code, gameState);
+            const { success, codes, gameState } = await MultiplayerGame.#socket.timeout(1000).emitWithAck('card-drop', { x, y, dropTarget });
+            console.log('card-drop', success, codes, gameState);
             if (!success) {
                 this._loadGameState(gameState);
             }
+
+            logs = [...logs, ...codes];
         } catch (e) {
             console.log(e);
             this._requestGameState();
         }
+
+        MultiplayerGame.#doEvent('log', logs);
     }
 
     async _requestGameState() {
+        let logs = [];
         try {
             const data = await MultiplayerGame.#socket.timeout(1000).emitWithAck('request-game-state');
-            const { success, code, gameState } = data;
-            console.log('request-game-state', success, code, gameState);
+            const { success, codes, gameState } = data;
+            console.log('request-game-state', success, codes, gameState);
             if (success) {
                 this._loadGameState(gameState);
             }
 
+            logs = [...logs, ...codes];
             MultiplayerGame.#doEvent('request-game-state', data);
         } catch (e) {
             console.log(e);
+            logs.push('failed-to-get-game-state')
         }
+
+        MultiplayerGame.#doEvent('log', logs);
     }
 
     _loadGameState(gameState) {
