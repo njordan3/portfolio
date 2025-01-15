@@ -1,0 +1,9 @@
+dockerfile*
+.dockerignore
+.git
+/node_modules
+npm-debug.log
+/.cache
+/build
+/public
+README.md

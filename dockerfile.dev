@@ -1,0 +1,10 @@
+FROM node
+
+WORKDIR /remix
+
+COPY package*.json ./
+COPY *.config.* ./
+COPY .env ./
+RUN npm ci
+
+CMD ["npm", "run", "start"]
