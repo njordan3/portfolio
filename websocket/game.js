@@ -301,7 +301,10 @@ export default class Game {
         const userSessions = UserSessions.getInstance();
         const spectators = {};
         this.#spectators.forEach((spectator) => {
-            spectators[spectator] = userSessions.getSession(spectator) ?? false;
+            const spec = userSessions.getSession(spectator)?.user ?? false;
+            if (spec) {
+                spectators[spec.id] = spec.name;
+            }
         });
 
         let owner = userSessions.getSession(this.#owner)?.user ?? false;
@@ -339,7 +342,10 @@ export default class Game {
         const userSessions = UserSessions.getInstance();
         const spectators = {};
         this.#spectators.forEach((spectator) => {
-            spectators[spectator] = userSessions.getSession(spectator) ?? false;
+            const spec = userSessions.getSession(spectator)?.user ?? false;
+            if (spec) {
+                spectators[spec.id] = spec.name;
+            }
         });
 
         return {

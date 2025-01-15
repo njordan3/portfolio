@@ -6,7 +6,7 @@ const logMessage = {
     'unable-to-create-game': { style: 'error', msg: 'unable to create game' },
     'unable-to-create-game:max-games': { style: 'error', msg: 'max game capacity reached. unable to create game' },
     'game-not-found': { style: 'error', msg: 'game not found' },
-    'not-playing-game': { style: 'error', msg: 'action not permitted. not playing game' },
+    'not-playing-game': { style: 'error', msg: 'action not permitted. not a player in the game' },
     'unable-to-toggle': { style: 'error', msg: 'failed to set flag' },
     'failed-to-drop-card': { style: 'error', msg: 'failed to drop card' },
     'game-not-started': { style: 'error', msg: 'action not permitted. game not started' },

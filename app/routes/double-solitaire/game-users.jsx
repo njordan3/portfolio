@@ -76,13 +76,19 @@ export default memo(function GameUsers() {
     return (
         <>
             <legend>Game Users</legend>
+            {((owner && owner.id === userId) || (opponent && opponent.id === userId)) && (
+                <p className="text-[var(--success-color)]">You are Playing</p>
+            )}
+            {spectators[userId] && (
+                <p className="text-[var(--primary-color)]">You are Spectating</p>
+            )}
             {owner && (
                 <div className="flex flex-row justify-between">
                     <p
                         className={`${owner.connected ? '' : 'text-[var(--secondary-color)]'} my-1 truncate`}
                         title={`Game Owner: ${owner.name}`}
                     >
-                        {owner.id === userId && '*'}{owner.name}
+                        - {owner.id === userId && '*'}{owner.name}
                     </p>
                     <div className="flex flex-row">
                         {owner.ready && ReadyIcon}
@@ -97,7 +103,7 @@ export default memo(function GameUsers() {
                         className={`${opponent.connected ? '' : 'text-[var(--secondary-color)]'} my-1 truncate`}
                         title={`Game Opponent: ${opponent.name}`}
                     >
-                        {opponent.id === userId && '*'}{opponent.name}
+                        - {opponent.id === userId && '*'}{opponent.name}
                     </p>
                     <div className="flex flex-row">
                         {opponent.ready && ReadyIcon}

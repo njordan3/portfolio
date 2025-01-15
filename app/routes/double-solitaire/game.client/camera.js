@@ -149,6 +149,7 @@ export class Camera {
             x: startX + (width/2),
             y: startY + (height/2),
         };
+        this.#scale = 1;
 
         this.forceUpdate();
     }

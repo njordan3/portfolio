@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import UserSessions from './user-sessions.js';
 import GameInstances from './game-instances.js';
+import { sanitizeString } from './utils.js';
 
 export default function initWebSocketServer(httpServer) {
   const io = UserSessions.io = GameInstances.io = new Server(httpServer);
@@ -201,7 +202,7 @@ export default function initWebSocketServer(httpServer) {
               codes
             });
 
-            if (dropTarget.includes('foundations') && game.done()) {
+            if (sanitizeString(dropTarget).includes('foundations') && game.done()) {
               io.to(game.id).emit('game-complete', game.stats);
             }
 

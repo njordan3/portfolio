@@ -156,15 +156,20 @@ export class Game {
         const { foreground } = camera.contexts;
         const { tableau, foundations, hand } = this;
 
-        // Render only top cards
-        for (let i = 0; i < foundations.length; i++) {
-            foundations[i].renderForeground(foreground);
+        if (foundations) {
+            for (let i = 0; i < foundations.length; i++) {
+                foundations[i].renderForeground(foreground);
+            }
         }
         
-        hand.renderForeground(foreground);
+        if (hand) {
+            hand.renderForeground(foreground);
+        }
         
-        for (let i = 0; i < tableau.length; i++) {
-            tableau[i].renderForeground(foreground);
+        if (tableau) {
+            for (let i = 0; i < tableau.length; i++) {
+                tableau[i].renderForeground(foreground);
+            }
         }
 
         // Render dragging cards last so they appear on top
@@ -200,20 +205,27 @@ export class Game {
         const camera = Camera.getInstance();
 
         const { background } = camera.contexts;
+        const { tableau, foundations, hand } = this;
         const { boardWidth, boardHeight } = this.callGetDimensions();
 
         background.fillStyle = background.createPattern(Game._boardTexture, 'repeat');
         background.fillRect(0, 0, boardWidth, boardHeight);
 
-        for (let i = 0; i < this.tableau.length; i++) {
-            this.tableau[i].renderBackground(background);
+        if (tableau) {
+            for (let i = 0; i < tableau.length; i++) {
+                tableau[i].renderBackground(background);
+            }
         }
-
-        for (let i = 0; i < this.foundations.length; i++) {
-            this.foundations[i].renderBackground(background);
+        
+        if (foundations) {
+            for (let i = 0; i < foundations.length; i++) {
+                foundations[i].renderBackground(background);
+            }
         }
-
-        this.hand.renderBackground(background);
+        
+        if (hand) {
+            hand.renderBackground(background);
+        }
     }
 
     reset() {}
@@ -234,81 +246,87 @@ export class Game {
      * @param {number} y Y board coordinate.
      */
     #pickTargetAtPoint(x, y) {
-        if (!this._started) {
+        const { _started, hand, tableau } = this;
+        if (!_started) {
             return;
         }
 
         const mouse = Mouse.getInstance();
-        if (this.hand.isPointIntersectBlock(x, y)) {
-            mouse.avoidPan = true;
-        }
 
-        if ( this.hand.isPointIntersected(x, y) ) {
-            this._onCardPick(x, y);
-
-            if ( !this.hand.restart() ) {
-                this.hand.flip();
+        if (hand) {
+            if (hand.isPointIntersectBlock(x, y)) {
+                mouse.avoidPan = true;
             }
-
-            Camera.getInstance().forceUpdate();
-            return;
-        }
-
-        // Check Draggable Card hitboxes
-        const topCard = this.hand.top('up');
-        if (topCard) {
-            if ( topCard.isPointIntersected(x, y) ) {
+    
+            if ( hand.isPointIntersected(x, y) ) {
                 this._onCardPick(x, y);
-                topCard.isDragging = true;
-                this._draggingCardsData = {
-                    stack: this.hand,
-                    stackIndex: ['hand', 'up'],
-                    cards: [{
-                        index: this.hand.up.length-1,
-                        card: topCard,
-                        dragOffset: {
-                            x: x - topCard.position.x,
-                            y: y - topCard.position.y
-                        }
-                    }]
-                };
+    
+                if ( !hand.restart() ) {
+                    hand.flip();
+                }
+    
+                Camera.getInstance().forceUpdate();
                 return;
             }
-        }
-
-        if (this.tableau[0].isPointIntersectBlock(x, y)) {
-            mouse.avoidPan = true;
-        }
-
-        for (let i = this.tableau.length-1; i >= 0; i--) {
-            // Check if coordinates are in Stack hitbox before checking cards
-            if ( this.tableau[i].isPointIntersected(x, y) ) {
-                this._onCardPick(x, y);
-                const draggingCardsData = {
-                    stack: this.tableau[i],
-                    stackIndex: ['tableau', i, 'up'],
-                    cards: [],
-                };
-                for (let j = this.tableau[i].up.length-1; j >= 0; j--) {
-                    const { position } = this.tableau[i].up[j];
-                    draggingCardsData.cards.push({
-                        index: j,
-                        card: this.tableau[i].up[j],
-                        dragOffset: {
-                            x: x - position.x,
-                            y: y - position.y
-                        }
-                    });
-                    if ( this.tableau[i].up[j].isPointIntersected(x, y) ) {
-                        for (let j = 0; j < draggingCardsData.cards.length; j++) {
-                            draggingCardsData.cards[j].card.isDragging = true;
-                        }
-                        this._draggingCardsData = draggingCardsData;
-                        return;
-                    }
+    
+            // Check Draggable Card hitboxes
+            const topCard = hand.top('up');
+            if (topCard) {
+                if ( topCard.isPointIntersected(x, y) ) {
+                    this._onCardPick(x, y);
+                    topCard.isDragging = true;
+                    this._draggingCardsData = {
+                        stack: hand,
+                        stackIndex: ['hand', 'up'],
+                        cards: [{
+                            index: hand.up.length-1,
+                            card: topCard,
+                            dragOffset: {
+                                x: x - topCard.position.x,
+                                y: y - topCard.position.y
+                            }
+                        }]
+                    };
+                    return;
                 }
+            }
+        }
 
-                break;
+        if (tableau) {
+            if (tableau[0].isPointIntersectBlock(x, y)) {
+                mouse.avoidPan = true;
+            }
+    
+            for (let i = tableau.length-1; i >= 0; i--) {
+                // Check if coordinates are in Stack hitbox before checking cards
+                if ( tableau[i].isPointIntersected(x, y) ) {
+                    this._onCardPick(x, y);
+                    const draggingCardsData = {
+                        stack: tableau[i],
+                        stackIndex: ['tableau', i, 'up'],
+                        cards: [],
+                    };
+                    for (let j = tableau[i].up.length-1; j >= 0; j--) {
+                        const { position } = tableau[i].up[j];
+                        draggingCardsData.cards.push({
+                            index: j,
+                            card: tableau[i].up[j],
+                            dragOffset: {
+                                x: x - position.x,
+                                y: y - position.y
+                            }
+                        });
+                        if ( tableau[i].up[j].isPointIntersected(x, y) ) {
+                            for (let j = 0; j < draggingCardsData.cards.length; j++) {
+                                draggingCardsData.cards[j].card.isDragging = true;
+                            }
+                            this._draggingCardsData = draggingCardsData;
+                            return;
+                        }
+                    }
+    
+                    break;
+                }
             }
         }
     }
@@ -319,33 +337,36 @@ export class Game {
      * @param {number} y Y board coordinate
      */
     #dropCardsAtPoint(x, y) {
-        if (!this._started) {
+        const { _started, tableau, foundations, _draggingCardsData } = this;
+        if (!_started || !_draggingCardsData) {
             return false;
         }
         
-        const { stack, cards } = this._draggingCardsData;
+        const { stack, cards } = _draggingCardsData;
 
-        for (let i = this.tableau.length-1; i >= 0; i--) {
-            if ( this.tableau[i].isPointIntersected(x, y) ) {
-                if ( this.tableau[i].isValidDrop(cards[cards.length-1].card) ) {
-                    for (let j = cards.length-1; j >= 0; j--) {
-                        stack.up.pop(); // Dragged cards will always be from up
-                        this.tableau[i].push(cards[j].card, 'up');
+        if (tableau) {
+            for (let i = tableau.length-1; i >= 0; i--) {
+                if ( tableau[i].isPointIntersected(x, y) ) {
+                    if ( tableau[i].isValidDrop(cards[cards.length-1].card) ) {
+                        for (let j = cards.length-1; j >= 0; j--) {
+                            stack.up.pop(); // Dragged cards will always be from up
+                            tableau[i].push(cards[j].card, 'up');
+                        }
+                        
+                        this._resetDraggingCardsData();
+                        return `tableau.${i}`;
                     }
-                    
-                    this._resetDraggingCardsData();
-                    return `tableau.${i}`;
                 }
             }
         }
 
         // Foundations will only take a single dragged card
-        if (cards.length === 1) {
-            for (let i = this.foundations.length-1; i >= 0; i--) {
-                if ( this.foundations[i].isPointIntersected(x, y) ) {
-                    if ( this.foundations[i].isValidDrop(cards[0].card) ) {
+        if (foundations && cards.length === 1) {
+            for (let i = foundations.length-1; i >= 0; i--) {
+                if ( foundations[i].isPointIntersected(x, y) ) {
+                    if ( foundations[i].isValidDrop(cards[0].card) ) {
                         stack.up.pop(); // Dragged cards will always be from up
-                        this.foundations[i].push(cards[0].card, 'up');
+                        foundations[i].push(cards[0].card, 'up');
                         this._onFoundationsDrop();
     
                         this._resetDraggingCardsData();
@@ -386,6 +407,10 @@ export class Game {
         return null;
     }
 
+    _allowHoverEffects() {
+        return true;
+    }
+
     mouseEvent(e) {
         const mouse = Mouse.getInstance();
         const camera = Camera.getInstance();
@@ -400,95 +425,104 @@ export class Game {
         };
 
         const { x, y } = camera.getBoardPosition(mouse.position.x, mouse.position.y);
+        const { hand, tableau, foundations } = this;
 
         let hoverChanged = false;
+        const allowHoverEffects = this._allowHoverEffects();
+
+        // Check if we are hovering the hand up and down positions
         let handDownHovering = false;
-
-        // Check if we are hovering the top hand card
-        const oldHighlightDownEmpty = this.hand.highlightDownEmpty;
-        this.hand.highlightDownEmpty = false;
-        if (this.hand.isPointIntersected(x, y)) {
-            handDownHovering = true;
-            this.hand.highlightDownEmpty = true;
-        }
-        if (!this.hand.highlightDownEmpty !== oldHighlightDownEmpty) {
-            hoverChanged = true;
-        }
-
         let handUpHovering = false;
-        const upHandIndex = this.hand.up.length-1;
-        if (upHandIndex >= 0) {
-            const oldHighlightIndex = this.hand.highlightIndex;
-            this.hand.highlightIndex = null;
-            const topCard = this.hand.up[upHandIndex];
-            if (topCard.isPointIntersected(x, y)) {
-                handUpHovering = true;
-                this.hand.highlightIndex = upHandIndex;
+        if (hand && allowHoverEffects) {
+            const oldHighlightDownEmpty = hand.highlightDownEmpty;
+            hand.highlightDownEmpty = false;
+            if (hand.isPointIntersected(x, y)) {
+                handDownHovering = true;
+                hand.highlightDownEmpty = true;
             }
-
-            if (this.hand.highlightIndex !== oldHighlightIndex) {
+            if (!hand.highlightDownEmpty !== oldHighlightDownEmpty) {
                 hoverChanged = true;
             }
+
+            const upHandIndex = hand.up.length-1;
+            if (upHandIndex >= 0) {
+                const oldHighlightIndex = hand.highlightIndex;
+                hand.highlightIndex = null;
+                const topCard = hand.up[upHandIndex];
+                if (topCard.isPointIntersected(x, y)) {
+                    handUpHovering = true;
+                    hand.highlightIndex = upHandIndex;
+                }
+    
+                if (hand.highlightIndex !== oldHighlightIndex) {
+                    hoverChanged = true;
+                }
+            }
         }
+        
 
         // Check if we are hovering a card in the tableaus
         let tableauHovering = false;
-        for (let i = 0; i < this.tableau.length; i++) {
-            const oldHighlightDownEmpty = this.tableau[i].highlightDownEmpty;
-            this.tableau[i].highlightDownEmpty = false;
-            if (this.tableau[i].isPointIntersected(x, y)) {
-                tableauHovering = true;
-                this.tableau[i].highlightDownEmpty = true;
-            }
-            if (!this.tableau[i].highlightDownEmpty !== oldHighlightDownEmpty) {
-                hoverChanged = true;
-            }
-
-            const oldHighlightIndex = this.tableau[i].highlightIndex;
-            this.tableau[i].highlightIndex = null;
-            for (let j = this.tableau[i].up.length-1; j >= 0; j--) {
-                const card = this.tableau[i].up[j];
-                if (card.isPointIntersected(x, y)) {
+        if (tableau && allowHoverEffects) {
+            for (let i = 0; i < tableau.length; i++) {
+                const oldHighlightDownEmpty = tableau[i].highlightDownEmpty;
+                tableau[i].highlightDownEmpty = false;
+                if (tableau[i].isPointIntersected(x, y)) {
                     tableauHovering = true;
-                    this.tableau[i].highlightIndex = j;
-                    break;
+                    tableau[i].highlightDownEmpty = true;
                 }
-            }
-
-            if (this.tableau[i].highlightIndex !== oldHighlightIndex) {
-                hoverChanged = true;
+                if (!tableau[i].highlightDownEmpty !== oldHighlightDownEmpty) {
+                    hoverChanged = true;
+                }
+    
+                const oldHighlightIndex = tableau[i].highlightIndex;
+                tableau[i].highlightIndex = null;
+                for (let j = tableau[i].up.length-1; j >= 0; j--) {
+                    const card = tableau[i].up[j];
+                    if (card.isPointIntersected(x, y)) {
+                        tableauHovering = true;
+                        tableau[i].highlightIndex = j;
+                        break;
+                    }
+                }
+    
+                if (tableau[i].highlightIndex !== oldHighlightIndex) {
+                    hoverChanged = true;
+                }
             }
         }
 
-        // Check if we are hovering a card in the tableaus
+        // Check if we are hovering the foundations
         let foundationsHovering = false;
-        for (let i = 0; i < this.foundations.length; i++) {
-            const oldHighlightDownEmpty = this.foundations[i].highlightDownEmpty;
-            this.foundations[i].highlightDownEmpty = false;
-            if (this.foundations[i].isPointIntersected(x, y)) {
-                foundationsHovering = true;
-                this.foundations[i].highlightDownEmpty = true;
-            }
-            if (!this.foundations[i].highlightDownEmpty !== oldHighlightDownEmpty) {
-                hoverChanged = true;
-            }
-
-            const oldHighlightIndex = this.foundations[i].highlightIndex;
-            this.foundations[i].highlightIndex = null;
-
-            if (!foundationsHovering) {
-                const topCardIndex = this.foundations[i].up.length-1;
-                if (topCardIndex >= 0) {
-                    const topCard = this.foundations[i].up[topCardIndex];
-                    if (topCard.isPointIntersected(x, y)) {
-                        foundationsHovering = true;
-                        this.foundations[i].highlightIndex = topCardIndex;
+        if (foundations && allowHoverEffects) {
+            for (let i = 0; i < foundations.length; i++) {
+                const oldHighlightDownEmpty = foundations[i].highlightDownEmpty;
+                foundations[i].highlightDownEmpty = false;
+                if (foundations[i].isPointIntersected(x, y)) {
+                    foundationsHovering = true;
+                    foundations[i].highlightDownEmpty = true;
+                }
+                if (!foundations[i].highlightDownEmpty !== oldHighlightDownEmpty) {
+                    hoverChanged = true;
+                }
+    
+                const oldHighlightIndex = foundations[i].highlightIndex;
+                foundations[i].highlightIndex = null;
+    
+                if (!foundationsHovering) {
+                    const topCardIndex = foundations[i].up.length-1;
+                    if (topCardIndex >= 0) {
+                        const topCard = foundations[i].up[topCardIndex];
+                        if (topCard.isPointIntersected(x, y)) {
+                            foundationsHovering = true;
+                            foundations[i].highlightIndex = topCardIndex;
+                        }
                     }
                 }
-            }
-
-            if (this.foundations[i].highlightIndex !== oldHighlightIndex) {
-                hoverChanged = true;
+    
+                if (foundations[i].highlightIndex !== oldHighlightIndex) {
+                    hoverChanged = true;
+                }
             }
         }
 

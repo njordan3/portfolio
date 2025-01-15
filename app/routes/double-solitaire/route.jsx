@@ -55,6 +55,8 @@ export default function DoubleSolitaire() {
     const isMultiplayer = useMemo(() => searchParams.get('multiplayer') !== null, [searchParams]);
     const [creatingGame, setCreatingGame] = useState(false);
     const [playerType, setPlayerType] = useState(null);
+    const isInGame = useMemo(() => playerType !== null, [playerType]);
+    const isPlayingMultiplayer = useMemo(() => playerType === Game.playerTypes.OWNER || playerType === Game.playerTypes.OPPONENT, [playerType]);
     const [connected, setConnected] = useState(false);
     const [ready, setReady] = useState(false);
     const [games, setGames] = useState({});
@@ -73,14 +75,14 @@ export default function DoubleSolitaire() {
         } else if (isMultiplayer && mode !== 'multiplayer') {
             setCreatingGame(false);
             setSearchParams(params);
-            if (playerType !== null) {
+            if (isInGame) {
                 MultiplayerGame.getInstance().disconnect()
             } else {
                 MultiplayerGame.getInstance().leaveGame()
                     .then(() => MultiplayerGame.getInstance().disconnect());
             }
         }
-    }, [isMultiplayer, setSearchParams, playerType]);
+    }, [isMultiplayer, setSearchParams, isInGame]);
 
     const leaveGame = useCallback(() => {
         MultiplayerGame.getInstance().leaveGame();
@@ -224,9 +226,9 @@ export default function DoubleSolitaire() {
                         <a href="/" target="_self" className="no-style">Nicholas Jordan</a>
                     </div>
                 </div>
-                <button disabled={playerType !== null} className={`btn ${!isMultiplayer ? 'btn-primary' : 'btn-default btn-ghost'}`} onClick={() => setMode()}>Solo</button>
+                <button disabled={isInGame} className={`btn ${!isMultiplayer ? 'btn-primary' : 'btn-default btn-ghost'}`} onClick={() => setMode()}>Solo</button>
                 <button className={`btn ${isMultiplayer ? 'btn-primary' : 'btn-default btn-ghost'}`} onClick={() => setMode('multiplayer')}>Multiplayer</button>
-                {playerType === null && (
+                {!isInGame && (
                     <fieldset className="flex flex-col mt-4 min-w-0">
                         <legend>Singleplayer Stats</legend>
                         <p className={singleplayerScore !== 52 ? 'invisible' : 'blink'}>You Win!</p>
@@ -238,29 +240,37 @@ export default function DoubleSolitaire() {
                         {timer ? (
                             <CountdownTimer className="bg-[var(--success-color)] text-[var(--invert-font-color)]" initialSeconds={timer} text="Starting In:" />
                         ) : (
-                            <UsernameInput className="mt-4 select-none" disabled={playerType !== null} />
+                            <UsernameInput className="mt-4 select-none" disabled={isInGame} />
                         )}
                         <fieldset className="flex flex-col my-4 min-w-0 h-full select-none">
                         {creatingGame && (
                             <GameSettings />
                         )}
-                        {!creatingGame && playerType === null && !lastGameStats && (
+                        {!creatingGame && !isInGame && !lastGameStats && (
                             <GameBrowser games={games} />
                         )}
-                        {playerType !== null && (
+                        {isInGame && (
                             <GameUsers />
                         )}
                         {!creatingGame && lastGameStats && (
                             <>
                                 <fieldset className="flex flex-col my-4 min-w-0">
                                     <legend>Game Stats</legend>
-                                    {!lastGameStats.winner ? (
-                                        <p>You Tied</p>
-                                    ) : (
-                                        lastGameStats.stats[lastGameStats.winner].me ? (
-                                            <p className="blink">You Won!</p>
+                                    {isPlayingMultiplayer ? (
+                                        !lastGameStats.winner ? (
+                                            <p>You Tied</p>
                                         ) : (
-                                            <p>You Lost</p>
+                                            lastGameStats.stats[lastGameStats.winner].me ? (
+                                                <p className="blink">You Won!</p>
+                                            ) : (
+                                                <p>You Lost</p>
+                                            )
+                                        )
+                                    ) : (
+                                        !lastGameStats.winner ? (
+                                            <p>Tie Game</p>
+                                        ) : (
+                                            <p>{lastGameStats.stats[lastGameStats.winner].name} Won!</p>
                                         )
                                     )}
                                     {Object.keys(lastGameStats.stats).map((userId) => {
@@ -273,7 +283,7 @@ export default function DoubleSolitaire() {
                                         );
                                     })}
                                 </fieldset>
-                                {playerType === null && (
+                                {!isInGame && (
                                     <button className="btn btn-error" onClick={() => setLastGameStats(null)}>Hide Stats</button>
                                 )}
                             </>
@@ -287,34 +297,40 @@ export default function DoubleSolitaire() {
                             {creatingGame && (
                                 <button className="btn btn-error" onClick={() => setCreatingGame(false)}>Cancel Game</button>
                             )}
-                            {!creatingGame && playerType === null && (
+                            {!creatingGame && !isInGame && (
                                 <button className="btn btn-primary-invert" onClick={() => setCreatingGame(true)}>Create Game</button>
                             )}
-                            {!creatingGame && playerType !== null && (
+                            {!creatingGame && (
                                 <>
-                                    {gameStarted && !lastGameStats && (
-                                        done ? (
-                                            <button className="btn btn-primary-invert" onClick={toggleDone}>I'm Not Done</button>
-                                        ) : (
-                                            <HoldButton className="btn btn-primary" onComplete={toggleDone} holdTime={0.5} text="I'm Done"/>
-                                        )
+                                    {isPlayingMultiplayer && (
+                                        <>
+                                            {gameStarted && !lastGameStats && (
+                                                done ? (
+                                                    <button className="btn btn-primary-invert" onClick={toggleDone}>I'm Not Done</button>
+                                                ) : (
+                                                    <HoldButton className="btn btn-primary" onComplete={toggleDone} holdTime={0.5} text="I'm Done"/>
+                                                )
+                                            )}
+                                            {!gameStarted && !lastGameStats && (
+                                                ready ? (
+                                                    <button className="btn btn-primary-invert" onClick={toggleReady} disabled={timer}>Unready</button>
+                                                ) : (
+                                                    <HoldButton className="btn btn-primary" onComplete={toggleReady} disabled={timer} holdTime={0.5} text="Ready Up"/>
+                                                )
+                                            )}
+                                            {!gameStarted && lastGameStats && (
+                                                <HoldButton className="btn btn-primary" onComplete={toggleVoteRestart} disabled={voteRestart} holdTime={0.5} text="Play Again?"/>
+                                            )}
+                                        </>
                                     )}
-                                    {!gameStarted && !lastGameStats && (
-                                        ready ? (
-                                            <button className="btn btn-primary-invert" onClick={toggleReady} disabled={timer}>Unready</button>
-                                        ) : (
-                                            <HoldButton className="btn btn-primary" onComplete={toggleReady} disabled={timer} holdTime={0.5} text="Ready Up"/>
-                                        )
+                                    {isInGame && (
+                                        <HoldButton className="btn btn-error mt-4" onComplete={leaveGame} text="Leave Game"/>
                                     )}
-                                    {!gameStarted && lastGameStats && (
-                                        <HoldButton className="btn btn-primary" onComplete={toggleVoteRestart} disabled={voteRestart} holdTime={0.5} text="Play Again?"/>
-                                    )}
-                                    <HoldButton className="btn btn-error mt-4" onComplete={leaveGame} text="Leave Game"/>
                                 </>
                             )}
                         </>
                     )}
-                    {playerType === null && (
+                    {!isInGame && (
                         <HoldButton
                             className="btn btn-primary-invert mt-4"
                             onComplete={() => SingleplayerGame.getInstance().deal()}

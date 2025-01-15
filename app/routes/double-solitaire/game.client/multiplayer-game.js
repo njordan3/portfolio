@@ -88,38 +88,21 @@ export class MultiplayerGame extends Game {
             MultiplayerGame.#doEvent('game-restart', data);
         });
 
-        const processGameStats = (data) => {
-            let winner = null;
-            Object.keys(data).map((userId) => {
-                const { score } = data[userId];
-                if (!winner || score > data[winner].score) {
-                    winner = userId;
-                } else if (data[winner].score === score) {
-                    winner = null;  // tie
-                }
-                data[userId].me = userId === MultiplayerGame.#socket.userId;
-            });
-
-            return {
-                winner,
-                stats: data,
-            };
-        }
-
         MultiplayerGame.#socket.on('game-end', (data) => {
             console.log('game-end', data);
             if (Object.keys(data).length > 0) {
-                data = processGameStats(data);
+                data = this.#processGameStats(data);
             }
             this.unloadGame();
             MultiplayerGame.#doEvent('game-end', data);
             MultiplayerGame.#doEvent('log', ['game-ended']);
+            Camera.getInstance().recenter();
         });
         
         MultiplayerGame.#socket.on('game-complete', (data) => {
             console.log('game-complete', data);
             
-            data = processGameStats(data);
+            data = this.#processGameStats(data);
             this._started = false;
             const userUpdate = {
                 ready: false,
@@ -243,9 +226,10 @@ export class MultiplayerGame extends Game {
             console.log('player-card-drag-start', data);
             const { id, draggingCardsData } = data;
             if (this.isSpectator(id)) {
+                console.log('wow!!');
                 return;
             }
-
+            console.log('asd');
             const { stackIndex, cards } = draggingCardsData;
             const isOwner = this.isOwner(id);
 
@@ -432,7 +416,7 @@ export class MultiplayerGame extends Game {
                 }
                 
                 if (game.stats) {
-                    game.stats = processGameStats(game.stats);
+                    game.stats = this.#processGameStats(game.stats);
                 }
                 
                 this.foundations = Array.from({ length: 8 }, (e, i) => Foundations.createFromObject(game.foundations[i]));
@@ -484,6 +468,10 @@ export class MultiplayerGame extends Game {
             startX: -owner.startX,
             startY: -owner.startY
         };
+    }
+
+    _allowHoverEffects() {
+        return !this.isSpectator();
     }
 
     renderForeground(drawDraggingCards = false) {
@@ -596,10 +584,12 @@ export class MultiplayerGame extends Game {
         return this.isOwner(userId) || this.isOpponent(userId);
     }
 
-    isSpectator() {
+    isSpectator(userId = null) {
         if (this.#spectators) {
+            const id = userId ? userId : MultiplayerGame.#socket.userId;
+
             for (const spectator in this.#spectators) {
-                if (MultiplayerGame.#socket.userId === spectator) {
+                if (id === spectator) {
                     return true;
                 }
             }
@@ -691,9 +681,14 @@ export class MultiplayerGame extends Game {
     }
 
     async handleToggleFlag(toggle, flag) {
+        if (!this.isPlayer()) {
+            MultiplayerGame.#doEvent('log', ['not-playing-game']);
+            return;
+        }
+
         const { sessionId } = MultiplayerGame.#socket.auth;
         let logs = [];
-        if (sessionId && this.isPlayer()) {
+        if (sessionId) {
             try {
                 const { success, codes } = await MultiplayerGame.#socket.timeout(3000).emitWithAck('toggle-flag', { flag, toggle });
                 console.log('toggle-flag', { success, codes });
@@ -747,6 +742,10 @@ export class MultiplayerGame extends Game {
             this.tableau = this.#opponent.tableau;
         }
 
+        if (game.stats) {
+            MultiplayerGame.#doEvent('game-complete', this.#processGameStats(game.stats));
+        }
+
         this.foundations = Array.from({ length: 8 }, (e, i) => Foundations.createFromObject(game.foundations[i]));
 
         GameController.setIsMultiplayer(true);
@@ -765,13 +764,41 @@ export class MultiplayerGame extends Game {
         GameController.setIsMultiplayer(false);
         Camera.getInstance().rotation = 0;
     }
+
+    #processGameStats(data) {
+        let winner = null;
+        Object.keys(data).map((userId) => {
+            const { score } = data[userId];
+            if (!winner || score > data[winner].score) {
+                winner = userId;
+            } else if (data[winner].score === score) {
+                winner = null;  // tie
+            }
+            data[userId].me = userId === MultiplayerGame.#socket.userId;
+        });
+
+        return {
+            winner,
+            stats: data,
+        };
+    }
     
     _onCardPick(x, y) {
+        if (!this.isPlayer()) {
+            MultiplayerGame.#doEvent('log', ['not-playing-game']);
+            return;
+        }
+
         MultiplayerGame.#socket.emit('card-pick', { x, y });
     }
 
     #cardMoveTimeout;
     _onCardMove(x, y) {
+        if (!this.isPlayer()) {
+            MultiplayerGame.#doEvent('log', ['not-playing-game']);
+            return;
+        }
+
         if (!this.#cardMoveTimeout) {
             MultiplayerGame.#socket.volatile.emit('card-move', { x, y });
             this.#cardMoveTimeout = setTimeout(() => {
@@ -781,6 +808,11 @@ export class MultiplayerGame extends Game {
     }
 
     async _onCardDrop(x, y, dropTarget) {
+        if (!this.isPlayer()) {
+            MultiplayerGame.#doEvent('log', ['not-playing-game']);
+            return;
+        }
+
         let logs = [];
         try {
             const { success, codes, gameState } = await MultiplayerGame.#socket.timeout(1000).emitWithAck('card-drop', { x, y, dropTarget });
