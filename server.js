@@ -1,5 +1,6 @@
 import { createRequestHandler } from '@remix-run/express';
 import express from 'express';
+import 'dotenv/config'; // Import .env file contents to process.env
 import { createServer } from 'http';
 import initWebSocketServer from './websocket/server.js';
 
