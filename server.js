@@ -5,7 +5,7 @@ import { createServer } from 'http';
 import initWebSocketServer from './websocket/server.js';
 
 const viteDevServer =
-  process.env.NODE_ENV === 'production'
+  process.env.ENVIRONMENT === 'production'
     ? null
     : await import('vite').then((vite) =>
         vite.createServer({
