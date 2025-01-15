@@ -19,7 +19,7 @@ frontend:
         - cp server.js .amplify-hosting/compute/default
         - cp deploy-manifest.json .amplify-hosting/deploy-manifest.json
         # Make process.env available to server.js
-        - env | grep -e NODE_ENV -e PORT >> .amplify-hosting/compute/default/.env
+        - env | grep -e ENVIRONMENT -e PORT >> .amplify-hosting/compute/default/.env
         - cat .amplify-hosting/compute/default/.env
   artifacts:
     files:
