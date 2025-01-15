@@ -17,7 +17,7 @@ const app = express();
 app.use(
   viteDevServer
     ? viteDevServer.middlewares
-    : express.static('../../static')
+    : express.static('../../static') // amplify path
 );
 
 const build = viteDevServer
@@ -25,7 +25,7 @@ const build = viteDevServer
       viteDevServer.ssrLoadModule(
         'virtual:remix/server-build'
       )
-  : await import('./index.js');
+  : await import('./index.js'); // amplify path
 
 app.all('*', createRequestHandler({ build }));
 
