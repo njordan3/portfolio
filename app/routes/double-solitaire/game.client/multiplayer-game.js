@@ -74,17 +74,25 @@ export class MultiplayerGame extends Game {
                 done: false,
                 voteRestart: false,
             };
-            this.#owner = {
-                ...this.#owner,
-                ...userUpdate,
-            };
-            this.#opponent = {
-                ...this.#opponent,
-                ...userUpdate,
-            };
 
-            MultiplayerGame.#doEvent('owner-update', userUpdate);
-            MultiplayerGame.#doEvent('opponent-update', userUpdate);
+            if (this.#owner) {
+                this.#owner = {
+                    ...this.#owner,
+                    ...userUpdate,
+                };
+                
+                MultiplayerGame.#doEvent('owner-update', userUpdate);
+            }
+
+            if (this.#opponent) {
+                this.#opponent = {
+                    ...this.#opponent,
+                    ...userUpdate,
+                };
+    
+                MultiplayerGame.#doEvent('opponent-update', userUpdate);
+            }
+            
             MultiplayerGame.#doEvent('game-restart', data);
         });
 
@@ -831,6 +839,11 @@ export class MultiplayerGame extends Game {
     }
 
     async _requestGameState() {
+        if (!this.isPlayer()) {
+            MultiplayerGame.#doEvent('log', ['not-playing-game']);
+            return;
+        }
+
         let logs = [];
         try {
             const data = await MultiplayerGame.#socket.timeout(1000).emitWithAck('request-game-state');
