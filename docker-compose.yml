@@ -1,9 +1,0 @@
-services:
-  remix:
-    build:
-      context: .
-      dockerfile: dockerfile
-    ports:
-      - ${PORT}:${PORT}
-    env_file:
-      - .env

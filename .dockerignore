@@ -3,7 +3,10 @@ dockerfile*
 .git
 /node_modules
 npm-debug.log
-/.cache
+.cache
 /build
-/public
+public/build
 README.md
+
+# sst
+.sst

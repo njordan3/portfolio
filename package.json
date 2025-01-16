@@ -4,10 +4,12 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "remix vite:dev --port 3000 --host",
-    "start": "node ./server.js",
     "build": "npx remix vite:build",
-    "serve": "npx remix-serve build/server/index.js"
+    "serve": "npx remix-serve build/server/index.js",
+    "start": "node ./server.js",
+    "deploy": "npx sst deploy --stage production",
+    "remove": "npx sst remove --stage production",
+    "dev": "npx sst dev"
   },
   "keywords": [],
   "author": "",
@@ -24,7 +26,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "sst": "3.5.13"
   },
   "devDependencies": {
     "@remix-run/dev": "^2.13.1",

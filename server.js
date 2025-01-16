@@ -17,7 +17,7 @@ const app = express();
 app.use(
   viteDevServer
     ? viteDevServer.middlewares
-    : express.static('../../static') // amplify path
+    : express.static('./build/client')
 );
 
 const build = viteDevServer
@@ -25,7 +25,7 @@ const build = viteDevServer
       viteDevServer.ssrLoadModule(
         'virtual:remix/server-build'
       )
-  : await import('./index.js'); // amplify path
+  : await import('./build/server/index.js');
 
 app.all('*', createRequestHandler({ build }));
 
@@ -33,5 +33,5 @@ const httpServer = createServer(app);
 initWebSocketServer(httpServer);
 
 httpServer.listen(process.env.PORT, async() => {
-  console.log(`App (${process.env.NODE_ENV}) listening on http://localhost:${process.env.PORT}`);
+  console.log(`App (${process.env.ENVIRONMENT}) listening on http://localhost:${process.env.PORT}`);
 });
