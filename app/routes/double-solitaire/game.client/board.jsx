@@ -58,12 +58,12 @@ function Board() {
         Mouse.getInstance();
         const camera = Camera.getInstance()
         camera.setContexts(fCanvas.getContext('2d'), bCanvas.getContext('2d'));
-        camera.recenter();
 
         new ResizeObserver(resizeCanvas).observe(container.current);
     
         animationFrameId.current = window.requestAnimationFrame(render);
         resizeCanvas();
+        camera.recenter();
 
         return () => {
             window.cancelAnimationFrame(animationFrameId.current);

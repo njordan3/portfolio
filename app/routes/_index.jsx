@@ -1,4 +1,4 @@
-import { useSearchParams } from '@remix-run/react';
+import { Link, useSearchParams } from '@remix-run/react';
 
 import me from '@images/me.jpg';
 import yosemiteDrink from '@images/yosemite-drink.jpg';
@@ -11,6 +11,7 @@ import { Form } from 'react-router-dom';
 import ImageCarousel from '@components/image-carousel';
 
 import indexCSS from './styles/_index.css?url';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 export const links = () => [
     {
@@ -25,7 +26,32 @@ export default function Index() {
     const github = 'https://github.com/njordan3';
 
     const [searchParams] = useSearchParams();
-    const showMoreAboutMe = parseInt(searchParams.get('more-about-me') || 0);
+    const showMoreAboutMe = useMemo(() => parseInt(searchParams.get('more-about-me') || 0), [searchParams]);
+    const showMore = useRef(null);
+    const scrollPosition = useRef(0);
+
+    useEffect(() => {
+        // Keep scroll position when opening 'showMoreAboutMe'
+        if (scrollPosition.current) {
+            window.scrollTo({ top: scrollPosition.current });
+        }
+    }, [showMoreAboutMe]);
+
+    const handleScroll = useCallback(() => {
+        scrollPosition.current = window.scrollY;
+    }, []);
+
+    useEffect(() => {
+        if (showMoreAboutMe) {
+            showMore.current.scrollIntoView();
+        }
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, []);
 
     return (
         <>
@@ -38,10 +64,10 @@ export default function Index() {
                     </div>
                     <nav className="terminal-menu">
                         <ul>
-                            <li><a className="menu-item" href="#bio">Bio</a></li>
-                            <li><a className="menu-item" href="#work">Work</a></li>
-                            <li><a className="menu-item" href="#projects">Projects</a></li>
-                            <li><a className="menu-item" href="#contributors">Contributors</a></li>
+                            <li><Link className="menu-item" to="#bio">Bio</Link></li>
+                            <li><Link className="menu-item" to="#work">Work</Link></li>
+                            <li><Link className="menu-item" to="#projects">Projects</Link></li>
+                            <li><Link className="menu-item" to="#contributors">Contributors</Link></li>
                         </ul>
                     </nav>
                 </div>
@@ -52,28 +78,40 @@ export default function Index() {
                             <h2>Resources</h2>
                             <nav>
                                 <ul>
-                                    <li className="mb-2"><a href="https://drive.google.com/file/d/1P2z2v_VaIpffbaWqVM0gS5pNkZgKvx83/view?usp=sharing" target="_blank">View Resume</a></li>
+                                    <li className="mb-2"><a href="https://drive.google.com/file/d/1sk0IK5riuypDfZPj4MGj-7lfTGPnV9pJ/view" target="_blank">View Resume</a></li>
                                     <li className="mb-2"><a href="mailto:nijordan99@gmail.com" target="_blank">Email Me</a></li>
                                     <li className="mb-2"><a href={linkedIn} target="_blank">My LinkedIn</a></li>
                                     <li className="mb-2"><a href={github} target="_blank">My Github</a></li>
+                                    <li className="mb-2"><a href="/double-solitaire" target="_blank">*Double Solitaire V3*</a></li>
                                 </ul>
                             </nav>
                         </aside>
                     </div>
                     <main>
                         <section>
-                            <header><h2 id="bio">Hey, my name is Nick and I enjoy solving problems.</h2></header>
+                            <header>
+                                <h1>Full-Stack Software Engineer | Problem Solver | Innovator</h1>
+                                <h2 id="bio">Hey, my name is Nick and I enjoy solving problems.</h2>
+                            </header>
                             <img src={me} alt="A picture of me in snowy woods" />
                         </section>
                         <hr/>
                         <section>
                             <header><h2 id="bio">Bio</h2></header>
-                            <p>Like many computer science majors, my interest in the field began with playing video games as a kid.</p>
                             <p>
-                                This lead me to build my own computer, get my first job in IT, and take engineering classes in highschool only to find a love for creating logistical solutions.
-                                My future college courses and work experience only reinforced this.    
+                                I'm a passionate full-stack software engineer with 3+ years of professional experience building scalable,
+                                efficient back-end processes and user-focused tooling and dashboards.
                             </p>
-                            <p>Thanks to video games, I'm always looking for new opportunities to solve interesting logistical challenges!</p>
+                            <p>
+                                Skilled in PHP, Node.js, Javascript, React, Vue, and AWS. I specialize in writing maintainable code that
+                                bridges the gap between back-end functionality and front-end design.
+                            </p>
+                            <p>
+                                With a strong foundation in software architecture and a keen eye for UI/UX, I love turning complex problems
+                                into elegant, working solutions. I've contributed to projects ranging from reservation dashboards to inventory ingestion
+                                and delivery systems, emphasizing collaboration and continuous learning along the way.
+                            </p>
+                            <p>When I'm not coding, you'll find me hiking southern California, working on throw-away projects, and playing video games.</p>
                             <Form replace>
                                 {showMoreAboutMe === 1 ? (
                                     <button name="more-about-me" value={0} className="terminal-prompt">
@@ -86,25 +124,8 @@ export default function Index() {
                                 )}
                             </Form>
                             {showMoreAboutMe === 1 && (
-                                <fieldset className="mt-2">
+                                <fieldset id="show-more" ref={showMore} className="mt-2">
                                     <legend>Hobbies</legend>
-                                    <h3>Video Games</h3>
-                                    <p>
-                                        I grew up playing Halo and Call of Duty on the original Xbox and Xbox 360.
-                                        I started to move towards PC gaming around junior high with my first laptop playing the alpha version of Minecraft.
-                                        My transition to PC gaming finalized when I built my first gaming PC during sophomore year of high school.
-                                        Halo and the classic Call of Duties have a special place in my heart, but most of my game time lately has been towards:
-                                    </p>
-                                    <ul>
-                                        <li>Team Fortress 2</li>
-                                        <li>Modded Minecraft</li>
-                                        <li>Factorio</li>
-                                        <li>Satisfactory</li>
-                                    </ul>
-                                    <p>
-                                        Many games phased in and out of my interest, but I'm currently most interested in <a href="https://en.wikipedia.org/wiki/Shooter_game#Boomer_shooter" target="_blank">boomer shooters</a> and <a href="https://en.wikipedia.org/wiki/Construction_and_management_simulation#Factory_simulation_games" target="_blank">base building/automation</a> games.
-                                    </p>
-                                    <hr/>
                                     <h3>Hiking</h3>
                                     <p>
                                         With a job and hobby that has so much desk-time I try to counteract this with some hiking on the weekends. Living in Pasadena, CA
@@ -151,11 +172,23 @@ export default function Index() {
                                     ]}/>
                                     <p>I love national parks and forests and have definitely not visited enough of them, but many are on my list.</p>
                                     <hr/>
-                                    <p>I also enjoy cooking and baking bread. I get a lot of my inspiration from various cooking Youtube channels.</p>
-                                    <p> 
-                                        Lately I've also been trying my hand at oil painting landscapes (think Bob Ross).
-                                        I've only done a handful, but I do feel like I'm improving. At least in technique.
+                                    <h3>Video Games</h3>
+                                    <p>
+                                        I grew up playing Halo and Call of Duty on the original Xbox and Xbox 360.
+                                        I started to move towards PC gaming around junior high with my first laptop playing the alpha version of Minecraft.
+                                        My transition to PC gaming finalized when I built my first gaming PC during sophomore year of high school.
+                                        Halo and the classic Call of Duties have a special place in my heart, but most of my game time lately has been towards:
                                     </p>
+                                    <ul>
+                                        <li>Team Fortress 2</li>
+                                        <li>Modded Minecraft</li>
+                                        <li>Factorio</li>
+                                        <li>Satisfactory</li>
+                                    </ul>
+                                    <p>
+                                        Many games phased in and out of my interest, but I'm currently most interested in <a href="https://en.wikipedia.org/wiki/Shooter_game#Boomer_shooter" target="_blank">boomer shooters</a> and <a href="https://en.wikipedia.org/wiki/Construction_and_management_simulation#Factory_simulation_games" target="_blank">base building/automation</a> games.
+                                    </p>
+                                    <hr/>
                                 </fieldset>
                             )}
                         </section>
@@ -173,16 +206,25 @@ export default function Index() {
                                 <div className="terminal-card">
                                     <header>Bachelor of Science (2017 - 2021)</header>
                                     <div>
-                                        <p>Run-of-the-mill 4-year bachelors degree in computer science from CSU Bakersfield. I Learned about programming, math, databases, etc.</p>
-                                        <p>My senior project was essentially "Duolingo but for ASL" using an AI model trained to detect the letters A through E from a webcam.</p>
-                                        <p>I was responsible for setting up the app, database, and several mini-games. We called it <a href={`${github}/Handango`} target="_blank">"Handango"</a>.</p>
-                                        <p>I'm sure I'd be embarrassed of most of that code if I took a look at it now; although I was proud of it at the time!</p>
-                                        <p>We didn't end up taking this project anywhere after graduation, so this hasn't been developed further.</p>
                                         <p>
-                                            I'm being brief about my college experience, but it was very valuable to me because it exposed me
-                                            to different technologies, methodologies, languages, as well as collaboration.
-                                            Coming out of it I felt very prepared to enter the job market.
+                                            Run-of-the-mill 4-year bachelor's degree in computer science from CSU Bakersfield.
+                                            This experience was very valuable to me and verified that this was the field I wanted to go into.
+                                            Since then I've been chasing that satisfaction of conquering complex problems after investing so much time into it.
+                                            I was exposed to many different technologies, methodologies, and languages as well as collaborating with peers,
+                                            so coming out of it I felt very prepared to enter the job market.
                                         </p>
+                                        <p>
+                                            My capstone project was described as "Duolingo but for American Sign Language" using an AI model trained to
+                                            detect the letters A through E from a webcam. While that may seem insignificant, the model was self trained and
+                                            hand adjusted using the limited free data we could find, so we considered this a huge success.
+                                            We called it <a href={`${github}/Handango`} target="_blank">"Handango"</a>.
+                                        </p>
+                                        <p>
+                                            I was responsible for setting up the app structure, database, user accounts, and a few mini-games using
+                                            the MEAN stack (MySQL, Express, Angular, Node.js). I'm sure I'd be a little embarrassed by most of that
+                                            code if I took a look at it now, but I'm still proud of it.
+                                        </p>
+                                        <i>We didn't end up taking this project anywhere after graduation, so this hasn't been developed further.</i>
                                     </div>
                                 </div>
                                 <div className="terminal-card">
@@ -207,15 +249,16 @@ export default function Index() {
                                             <li>Improved problem solving abilities</li>
                                             <li>AWS experience with EC2, Amplify, and Lamdba</li>
                                         </ul>
+                                        <p>My main focus is on the back-end systems that power our platforms, but I often get involved in front-end work; solidifying me as a full-stack engineer.</p>
                                         <p>
                                             Most of my day-to-day work involves handling support tickets, fixing bugs within our CMS and inventory systems,
                                             working on new features in our roadmap, and creating documentation for use across multiple teams.
-                                            We are always getting new feature requests and compliance requirements from our partnered OEMs (Toyota, Nissan, GM Canada, etc),
+                                            We are always getting new feature requests and compliance requirements from our partnered vehicle brands,
                                             so I'm familiar with looking through documentation and designing ways to appropriately fit it within our system.
                                         </p>
                                         <p>
                                             Over these 3+ years I've proven myself to be a reliable problem solver and strong communicator;
-                                            becoming a go-to guy within the company for backend systems inquiries.
+                                            becoming a go-to guy within the company for back-end systems inquiries.
                                         </p>
                                     </div>
                                 </div>
@@ -227,14 +270,15 @@ export default function Index() {
                             <p>
                                 Like most programmers, most of my personal coding projects have never seen the light of day.
                                 My projects have mostly been me messing around with Unreal Engine, Godot, or just simple mini-games in Javascript.
-                                Feel free to check out my <a href={github}>Github</a> to see all the old projects I've got lying around.
+                                Feel free to check out my <a href={github}>Github</a> to see all the old projects and school work I've got lying around.
                             </p>
+                            <p className='terminal-alert'>*Now featuring <q>Double Solitaire V3</q>! My most recent iteration of the card game I grew up playing with family. Click the link below and check it out!*</p>
                             <ul className="mx-4">
                                 <li><a href={`${github}/TankGameV2`} target="_blank">Tank Game V2</a></li>
                                 <li><a href={`${github}/godot-terrain`} target="_blank">Godot Terrain</a></li>
-                                <li><a href={`${github}/Double-Solitaire`} target="_blank">Double Solitaire</a></li>
-                                <li><a href={`${github}/double-solitaire-v2`} target="_blank">Double Solitaire V2</a></li>
-                                <li><span className="fake-a">More Coming Soon...</span></li>
+                                <li><a href={`${github}/Double-Solitaire`} target="_blank">Double Solitaire</a><small></small></li>
+                                <li><a href={`${github}/double-solitaire-v2`} target="_blank">Double Solitaire V2</a><small></small></li>
+                                <li><a href="/double-solitaire" target="_blank">Double Solitaire V3</a><small> (Live!)</small></li>
                             </ul>
                         </section>
                         <hr/>
@@ -265,8 +309,12 @@ export default function Index() {
                 </div>
             </div>
             <div className="terminal-banner">
-                <div className="container-fluid">
-                    Thanks for taking a look!
+                <div className="container-fluid text-center">
+                    <p>Thanks for taking a look!</p>
+                    <p>
+                        Built with <a href="https://remix.run/">Remix</a>, <a href="https://tailwindcss.com/">TailwindCSS</a>,
+                        {' '}<a href="https://terminalcss.xyz/dark/">TerminalCSS</a> and deployed to AWS using <a href="https://sst.dev/">SST</a>.
+                    </p>
                 </div>
             </div>
         </>
